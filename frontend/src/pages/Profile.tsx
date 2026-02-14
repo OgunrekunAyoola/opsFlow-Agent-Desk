@@ -8,6 +8,10 @@ export function Profile() {
   const [actions, setActions] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const logout = () => {
+    localStorage.removeItem('access_token');
+    window.location.href = '/login';
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -83,6 +87,12 @@ export function Profile() {
           className="px-4 py-2 rounded-xl bg-grad-main text-white"
         >
           Save
+        </button>
+        <button
+          onClick={logout}
+          className="ml-3 px-4 py-2 rounded-xl bg-white border border-slate-200 text-text-primary"
+        >
+          Logout
         </button>
       </div>
 

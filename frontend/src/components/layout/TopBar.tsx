@@ -6,6 +6,10 @@ import { Link } from 'react-router-dom';
 export function TopBar() {
   const [userName, setUserName] = useState('User');
   const [tenantName, setTenantName] = useState('');
+  const logout = () => {
+    localStorage.removeItem('access_token');
+    window.location.href = '/login';
+  };
   useEffect(() => {
     const load = async () => {
       try {
@@ -49,6 +53,13 @@ export function TopBar() {
               <User size={20} />
             </div>
           </Link>
+          <button
+            onClick={logout}
+            className="px-3 py-2 rounded-full bg-white border border-slate-200 text-sm text-text-muted hover:text-text-primary"
+            title="Log out"
+          >
+            Logout
+          </button>
         </div>
       </div>
     </header>
