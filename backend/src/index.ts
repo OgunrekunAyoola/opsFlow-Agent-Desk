@@ -28,7 +28,17 @@ connectDB().then(() => console.log('DB Connection attempt finished'));
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200 });
 app.use(helmet());
 app.use(cookieParser());
-app.use(cors());
+const frontendUrl = process.env.FRONTEND_URL;
+if (frontendUrl) {
+  app.use(
+    cors({
+      origin: frontendUrl,
+      credentials: true,
+    }),
+  );
+} else {
+  app.use(cors());
+}
 app.use(express.json());
 app.use(limiter);
 app.use('/auth', authRouter);
