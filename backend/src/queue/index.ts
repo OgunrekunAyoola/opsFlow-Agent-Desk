@@ -30,6 +30,17 @@ function buildConnection() {
   } as any;
 }
 
-const connection = buildConnection();
+const shouldUseMock =
+  !process.env.REDIS_URL &&
+  !process.env.REDIS_HOST &&
+  (process.env.NODE_ENV !== 'production');
 
-export const emailSendQueue = new Queue('email-send', { connection });
+class MockQueue {
+  async add(_name: string, _data: any) {
+    return { id: 'mock', name: _name };
+  }
+}
+
+export const emailSendQueue: { add: (name: string, data: any) => Promise<any> } = shouldUseMock
+  ? new MockQueue()
+  : new Queue('email-send', { connection: buildConnection() });
