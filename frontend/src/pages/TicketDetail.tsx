@@ -28,6 +28,11 @@ export function TicketDetail() {
   const [replyBody, setReplyBody] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  const [editPriority, setEditPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('low');
+  const [editCategory, setEditCategory] = useState<string>('general');
+  const [users, setUsers] = useState<any[]>([]);
+  const [editAssignee, setEditAssignee] = useState<string>('');
+  const [isSavingProps, setIsSavingProps] = useState(false);
   const toast = useToast();
 
   const fetchTicket = async () => {
@@ -35,6 +40,9 @@ export function TicketDetail() {
       setIsLoading(true);
       const res = await api.get(`/tickets/${id}`);
       setTicket(res.data);
+      setEditPriority((res.data.priority || 'low') as any);
+      setEditCategory(res.data.category || 'general');
+      setEditAssignee(res.data.assigneeId?._id || '');
     } catch (err: any) {
       if (err.response?.status === 401) return;
       console.error(err);
@@ -47,6 +55,19 @@ export function TicketDetail() {
   useEffect(() => {
     if (id) fetchTicket();
   }, [id]);
+
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        const res = await api.get('/users');
+        setUsers(res.data.users || []);
+      } catch (err: any) {
+        // Non-admin users may not access /users
+        setUsers([]);
+      }
+    };
+    loadUsers();
+  }, []);
 
   const handleReply = async (text?: string) => {
     const bodyToSend = typeof text === 'string' ? text : replyBody;
@@ -64,6 +85,23 @@ export function TicketDetail() {
       toast.error('Failed to send reply');
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const saveProperties = async () => {
+    if (!ticket) return;
+    try {
+      setIsSavingProps(true);
+      const payload: any = { priority: editPriority, category: editCategory };
+      if (editAssignee) payload.assigneeId = editAssignee;
+      const res = await api.patch(`/tickets/${ticket._id}`, payload);
+      setTicket(res.data);
+      toast.success('Ticket updated');
+    } catch (err: any) {
+      if (err.response?.status === 401) return;
+      toast.error('Failed to update ticket');
+    } finally {
+      setIsSavingProps(false);
     }
   };
 
@@ -106,6 +144,58 @@ export function TicketDetail() {
             <div className="text-sm text-text-muted">
               Opened {new Date(ticket.createdAt).toLocaleString()} · ID #{ticket._id.slice(-6)}
             </div>
+          </div>
+        </div>
+
+        {/* Properties */}
+        <div className="glass-panel rounded-2xl p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <div className="text-xs text-text-muted mb-1">Priority</div>
+              <select
+                value={editPriority}
+                onChange={(e) => setEditPriority(e.target.value as any)}
+                className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200"
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </div>
+            <div>
+              <div className="text-xs text-text-muted mb-1">Category</div>
+              <select
+                value={editCategory}
+                onChange={(e) => setEditCategory(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 capitalize"
+              >
+                <option value="general">General</option>
+                <option value="billing">Billing</option>
+                <option value="bug">Bug</option>
+                <option value="feature_request">Feature request</option>
+              </select>
+            </div>
+            <div>
+              <div className="text-xs text-text-muted mb-1">Assignee</div>
+              <select
+                value={editAssignee}
+                onChange={(e) => setEditAssignee(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200"
+              >
+                <option value="">Unassigned</option>
+                {users.map((u) => (
+                  <option key={u._id} value={u._id}>
+                    {u.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="flex justify-end mt-4">
+            <Button onClick={saveProperties} isLoading={isSavingProps}>
+              Save Changes
+            </Button>
           </div>
         </div>
 
@@ -181,6 +271,8 @@ export function TicketDetail() {
             onApproveReply={handleReply}
             analysis={ticket.aiAnalysis}
             isTriaged={!!ticket.isAiTriaged}
+            customerEmail={ticket.customerEmail}
+            currentPriority={ticket.priority as any}
           />
         </div>
       </div>

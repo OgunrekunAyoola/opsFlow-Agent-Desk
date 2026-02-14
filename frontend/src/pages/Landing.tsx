@@ -58,11 +58,49 @@ export function Landing() {
               Start Free Trial <ArrowRight size={20} className="ml-2" />
             </Button>
           </Link>
-          <Link to="/login">
-            <button className="h-14 px-8 rounded-xl bg-white border border-slate-200 text-text-primary font-medium hover:bg-slate-50 transition-colors">
-              View Demo
-            </button>
-          </Link>
+        </div>
+
+        <div className="mt-12 mx-auto max-w-4xl">
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-lg overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-red-400" />
+                <div className="w-3 h-3 rounded-full bg-yellow-400" />
+                <div className="w-3 h-3 rounded-full bg-green-400" />
+              </div>
+              <span className="text-xs text-text-muted">Dashboard Preview</span>
+            </div>
+            <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="md:col-span-2 space-y-4">
+                <div className="h-28 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between px-6">
+                  <div>
+                    <p className="text-sm text-text-muted">Open Tickets</p>
+                    <p className="text-2xl font-bold text-text-primary">128</p>
+                  </div>
+                  <div className="text-xs text-green-600 bg-green-50 border border-green-100 px-2 py-1 rounded">
+                    +12% this week
+                  </div>
+                </div>
+                <div className="h-40 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-text-muted text-sm">
+                  Status breakdown and trends chart
+                </div>
+              </div>
+              <div className="space-y-4">
+                <div className="rounded-xl bg-slate-50 border border-slate-100 p-4">
+                  <p className="text-sm font-medium text-text-primary mb-2">AI Suggestions</p>
+                  <ul className="text-sm text-text-muted space-y-2">
+                    <li>Prioritize critical bug reports</li>
+                    <li>Auto-respond to billing inquiries</li>
+                    <li>Assign feature requests to product</li>
+                  </ul>
+                </div>
+                <div className="rounded-xl bg-slate-50 border border-slate-100 p-4">
+                  <p className="text-sm font-medium text-text-primary mb-2">Team Activity</p>
+                  <p className="text-sm text-text-muted">Live stream of recent actions</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </header>
 

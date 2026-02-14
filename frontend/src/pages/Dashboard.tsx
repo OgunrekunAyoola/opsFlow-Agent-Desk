@@ -137,14 +137,28 @@ export function Dashboard() {
           value={stats.totalTickets}
           icon={Ticket}
           color="bg-blue-500"
+          href="/tickets"
         />
-        <StatCard title="Open Issues" value={openTickets} icon={Clock} color="bg-yellow-500" />
-        <StatCard title="Urgent" value={urgentTickets} icon={AlertTriangle} color="bg-red-500" />
+        <StatCard
+          title="Open Issues"
+          value={openTickets}
+          icon={Clock}
+          color="bg-yellow-500"
+          href="/tickets?status=new"
+        />
+        <StatCard
+          title="Urgent"
+          value={urgentTickets}
+          icon={AlertTriangle}
+          color="bg-red-500"
+          href="/tickets?priority=urgent"
+        />
         <StatCard
           title="Team Members"
           value={stats.totalUsers}
           icon={Users}
           color="bg-purple-500"
+          href="/team"
         />
       </div>
 
@@ -203,12 +217,16 @@ export function Dashboard() {
           <h3 className="font-heading font-bold text-lg mb-4">Status Breakdown</h3>
           <div className="space-y-3">
             {Object.entries(stats.byStatus).map(([status, count]) => (
-              <div key={status} className="flex items-center justify-between">
+              <Link
+                key={status}
+                to={`/tickets?status=${status}`}
+                className="flex items-center justify-between hover:bg-white rounded-xl px-3 -mx-3 py-2 transition-colors"
+              >
                 <span className="text-sm capitalize text-text-muted">
                   {status.replace('_', ' ')}
                 </span>
                 <span className="font-medium text-text-primary">{count}</span>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
@@ -222,14 +240,16 @@ function StatCard({
   value,
   icon: Icon,
   color,
+  href,
 }: {
   title: string;
   value: number;
   icon: any;
   color: string;
+  href?: string;
 }) {
-  return (
-    <div className="glass-panel rounded-2xl p-6 flex items-center gap-4">
+  const CardInner = (
+    <div className="glass-panel rounded-2xl p-6 flex items-center gap-4 hover:bg-white transition-colors">
       <div
         className={`w-12 h-12 rounded-xl flex items-center justify-center text-white ${color} shadow-lg shadow-${color.replace('bg-', '')}/20`}
       >
@@ -241,4 +261,5 @@ function StatCard({
       </div>
     </div>
   );
+  return href ? <Link to={href}>{CardInner}</Link> : CardInner;
 }

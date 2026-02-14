@@ -32,6 +32,7 @@ router.get('/', requireAuth, async (req, res) => {
       { subject: { $regex: s, $options: 'i' } },
       { body: { $regex: s, $options: 'i' } },
       { customerEmail: { $regex: s, $options: 'i' } },
+      { customerName: { $regex: s, $options: 'i' } },
     ];
   }
 

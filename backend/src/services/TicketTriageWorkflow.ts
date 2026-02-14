@@ -136,6 +136,9 @@ export class TicketTriageWorkflow {
       // Update Ticket
       ticket.category = categoryResult.category as any;
       ticket.priority = priorityResult.priority as any;
+      if (ticket.status !== 'closed') {
+        ticket.status = 'triaged' as any;
+      }
       if (assigneeResult.assigneeId) {
         ticket.assigneeId = assigneeResult.assigneeId as any;
       }
@@ -145,7 +148,7 @@ export class TicketTriageWorkflow {
       // Update aiAnalysis for backward compatibility / quick access
       ticket.aiAnalysis = {
         suggestedCategory: categoryResult.category,
-        suggestedReply: replyResult.replyBody,
+        suggestedReply: this.sanitizeReply(replyResult.replyBody),
         summary: `AI Triage: Classified as ${categoryResult.category} with ${priorityResult.priority} priority.`,
         sentiment: 'neutral',
       };
@@ -157,7 +160,7 @@ export class TicketTriageWorkflow {
         tenantId,
         ticketId,
         authorType: 'ai',
-        body: replyResult.replyBody,
+        body: this.sanitizeReply(replyResult.replyBody),
       });
 
       // Complete Run
@@ -241,5 +244,18 @@ export class TicketTriageWorkflow {
     body += `\nBest regards,\nSupport Team`;
 
     return { replyBody: body };
+  }
+
+  private sanitizeReply(text: string) {
+    const patterns = [
+      /credit\s*card\s*number/gi,
+      /password/gi,
+      /ssn|social\s*security\s*number/gi,
+    ];
+    let safe = text;
+    patterns.forEach((p) => {
+      safe = safe.replace(p, '[redacted]');
+    });
+    return safe;
   }
 }

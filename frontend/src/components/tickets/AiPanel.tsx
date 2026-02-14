@@ -18,6 +18,8 @@ interface AiPanelProps {
     suggestedReply?: string;
   };
   isTriaged: boolean;
+  customerEmail?: string;
+  currentPriority?: 'low' | 'medium' | 'high' | 'urgent';
 }
 
 export function AiPanel({
@@ -26,8 +28,10 @@ export function AiPanel({
   onApproveReply,
   analysis,
   isTriaged,
+  customerEmail,
+  currentPriority,
 }: AiPanelProps) {
-  const [status, setStatus] = useState<'initial' | 'loading' | 'completed'>('initial');
+  const [status, setStatus] = useState<'initial' | 'loading' | 'completed' | 'failed'>('initial');
   const [isApproving, setIsApproving] = useState(false);
   const [view, setView] = useState<'copilot' | 'history'>('copilot');
   const toast = useToast();
@@ -49,8 +53,8 @@ export function AiPanel({
     } catch (err: any) {
       if (err.response?.status === 401) return;
       console.error(err);
-      setStatus('initial');
-      toast.error('AI analysis failed');
+      setStatus('failed');
+      toast.error('AI triage failed. Please try again.');
     }
   };
 
@@ -145,6 +149,22 @@ export function AiPanel({
               </div>
             )}
 
+            {/* Failed State */}
+            {status === 'failed' && (
+              <div className="text-center py-8 space-y-4">
+                <div className="w-24 h-24 bg-red-50 rounded-full mx-auto flex items-center justify-center text-red-300 mb-4">
+                  <AlertTriangle size={48} />
+                </div>
+                <h4 className="font-bold text-text-primary">AI triage failed</h4>
+                <p className="text-sm text-text-muted">
+                  The AI couldn’t process this ticket. You can retry or reply manually.
+                </p>
+                <Button onClick={runTriage} className="w-full">
+                  <Sparkles size={16} className="mr-2" /> Retry AI Triage
+                </Button>
+              </div>
+            )}
+
             {/* Completed State */}
             {status === 'completed' && analysis && (
               <div className="space-y-4 animate-in slide-in-from-bottom-4 fade-in duration-500">
@@ -169,26 +189,23 @@ export function AiPanel({
                 {/* Priority Card */}
                 <div className="bg-white/60 rounded-xl p-3 border border-slate-100 shadow-sm">
                   <div className="flex items-center gap-2 mb-2 text-xs font-bold text-text-muted uppercase tracking-wider">
-                    <AlertTriangle size={12} /> Priority Score
+                    <AlertTriangle size={12} /> Priority
                   </div>
                   <div className="flex items-center justify-between">
                     <span
                       className={cn(
                         'font-bold',
-                        (analysis.priorityScore || 0) > 80
-                          ? 'text-red-500'
-                          : (analysis.priorityScore || 0) > 40
-                            ? 'text-orange-500'
-                            : 'text-green-500',
+                        currentPriority === 'urgent'
+                          ? 'text-red-600'
+                          : currentPriority === 'high'
+                            ? 'text-red-500'
+                            : currentPriority === 'medium'
+                              ? 'text-orange-500'
+                              : 'text-green-500',
                       )}
                     >
-                      {(analysis.priorityScore || 0) > 80
-                        ? 'HIGH'
-                        : (analysis.priorityScore || 0) > 40
-                          ? 'MEDIUM'
-                          : 'LOW'}
+                      {(currentPriority || 'low').toUpperCase()}
                     </span>
-                    <span className="text-xs text-text-muted">Score: {analysis.priorityScore}</span>
                   </div>
                 </div>
 
@@ -208,6 +225,13 @@ export function AiPanel({
                   </div>
                   <p className="text-xs text-text-primary bg-white p-2 rounded border border-slate-100 whitespace-pre-line max-h-40 overflow-y-auto">
                     {analysis.suggestedReply}
+                  </p>
+                  <p className="text-[11px] text-text-muted mt-2">
+                    Review before sending. AI replies may contain inaccuracies. This will email{' '}
+                    <span className="font-medium text-text-primary">
+                      {customerEmail || 'the customer'}
+                    </span>
+                    .
                   </p>
                   <Button
                     size="sm"
