@@ -1,5 +1,19 @@
 import { Link } from 'react-router-dom';
-import { Bot, ArrowRight, Zap, BarChart3, Users } from 'lucide-react';
+import {
+  Bot,
+  ArrowRight,
+  Zap,
+  BarChart3,
+  Users,
+  Check,
+  Star,
+  Globe2,
+  PenTool,
+  Shield,
+  Target,
+  Activity,
+  Rocket,
+} from 'lucide-react';
 import { Button } from '../components/ui/Button';
 
 export function Landing() {
@@ -130,12 +144,233 @@ export function Landing() {
         </div>
       </section>
 
+      <section id="future" className="container mx-auto px-6 py-24">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+          <div className="lg:col-span-7">
+            <div className="text-xs uppercase tracking-[0.2em] text-accent-primary mb-3">
+              Imagine the impossible
+            </div>
+            <h2 className="text-4xl font-heading font-bold mb-6">
+              What if support
+              <br />
+              could think?
+            </h2>
+            <ul className="space-y-3 text-lg leading-8">
+              <li className="flex items-center gap-2 text-text-primary">
+                <Check size={18} className="text-green-600" /> Every ticket is read the moment it
+                arrives
+              </li>
+              <li className="flex items-center gap-2 text-text-primary">
+                <Check size={18} className="text-green-600" /> Categories appear before you even
+                think
+              </li>
+              <li className="flex items-center gap-2 text-text-primary">
+                <Check size={18} className="text-green-600" /> Priorities adjust in real-time
+              </li>
+              <li className="flex items-center gap-2 text-text-primary">
+                <Check size={18} className="text-green-600" /> Replies write themselves—perfectly
+              </li>
+              <li className="flex items-center gap-2 text-text-primary">
+                <Check size={18} className="text-green-600" /> Your team only touches what truly
+                needs a human
+              </li>
+            </ul>
+            <div className="mt-6 text-2xl italic text-accent-primary">
+              That world exists. You're looking at it.
+            </div>
+          </div>
+          <div className="lg:col-span-5">
+            <div className="relative h-80 rounded-2xl border border-slate-200 bg-white/50 flex items-center justify-center">
+              <div className="absolute w-16 h-16 rounded-full bg-purple-200 blur-xl animate-pulse"></div>
+              <div className="absolute w-24 h-24 rounded-full bg-blue-200 blur-2xl animate-ping"></div>
+              <div className="absolute w-12 h-12 rounded-full bg-pink-200 blur-xl animate-pulse"></div>
+              <div className="text-text-muted text-sm">AI Brain Flowchart</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="container mx-auto px-6 py-24">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+          <div className="space-y-4">
+            <h3 className="text-3xl font-heading font-bold">The old way</h3>
+            <div className="space-y-2 text-text-muted">
+              <div>8:00 AM → 50 unread tickets</div>
+              <div>8:30 AM → Still sorting priorities</div>
+              <div>9:00 AM → Finally starting replies</div>
+              <div>12:00 PM → Still catching up</div>
+              <div className="mt-2">Result: Burnt out team, slow responses 😞</div>
+            </div>
+            <div className="h-40 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-text-muted">
+              Messy inbox visual
+            </div>
+          </div>
+          <div className="space-y-4">
+            <h3 className="text-3xl font-heading font-bold">The OpsFlow way</h3>
+            <div className="space-y-2 text-text-muted">
+              <div>8:00 AM → 50 tickets already triaged ✓</div>
+              <div>8:01 AM → Priorities set, owners assigned ✓</div>
+              <div>8:02 AM → Drafts ready for review ✓</div>
+              <div>8:15 AM → All 50 replies sent ✓</div>
+              <div className="mt-2">Result: Happy team, instant support 🚀</div>
+            </div>
+            <div className="h-40 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-text-muted">
+              Clean dashboard visual
+            </div>
+          </div>
+        </div>
+        <div className="mt-12 mx-auto max-w-md text-center px-6 py-4 rounded-2xl bg-white border border-slate-200">
+          From chaos to clarity in 60 seconds.
+        </div>
+      </section>
+
+      <section id="features-future" className="container mx-auto px-6 py-24">
+        <div className="text-center mb-12">
+          <div className="text-xs uppercase tracking-[0.2em] text-text-muted mb-2">
+            Features from the future
+          </div>
+          <h3 className="text-3xl font-heading font-bold">Build once. Benefit forever.</h3>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <FeatureTile
+            icon={<Zap />}
+            status="Available Now"
+            color="cyan"
+            name="Instant Triage"
+            description="AI reads, categorizes, and prioritizes every ticket in <2 seconds"
+          />
+          <FeatureTile
+            icon={<Star />}
+            status="Available Now"
+            color="purple"
+            name="Context Memory"
+            description="Remembers every customer, every conversation, every detail"
+          />
+          <FeatureTile
+            icon={<Target />}
+            status="Available Now"
+            color="pink"
+            name="Smart Routing"
+            description="Assigns tickets to the perfect team member based on skills and workload"
+          />
+          <FeatureTile
+            icon={<PenTool />}
+            status="Available Now"
+            color="green"
+            name="Reply Generation"
+            description="Drafts perfect, personalized replies using your brand voice and knowledge base"
+          />
+          <FeatureTile
+            icon={<Activity />}
+            status="Coming Q2 2026"
+            color="purple"
+            name="Workflow Engine"
+            description="Trigger actions: create refunds, update CRMs, notify Slack—automatically"
+          />
+          <FeatureTile
+            icon={<Globe2 />}
+            status="Coming Q2 2026"
+            color="cyan"
+            name="Multi-Language"
+            description="Detect customer language, reply in their native tongue—35 languages supported"
+          />
+          <FeatureTile
+            icon={<BarChart3 />}
+            status="Coming Q2 2026"
+            color="pink"
+            name="Predictive Analytics"
+            description="Know tomorrow's ticket volume today. Prevent issues before they explode."
+          />
+          <FeatureTile
+            icon={<Shield />}
+            status="Coming Q2 2026"
+            color="green"
+            name="Sentiment Radar"
+            description="Track customer happiness in real-time. Catch churn risks before they leave."
+          />
+          <FeatureTile
+            icon={<Rocket />}
+            status="Coming Q2 2026"
+            color="purple"
+            name="Auto-Resolve"
+            description="Common questions answered instantly, no human needed. 40% of tickets solved autonomously."
+          />
+        </div>
+        <div className="mt-10 text-center text-text-muted italic">
+          And we're just getting started. Our AI learns every day. Your support desk gets smarter
+          every hour.
+        </div>
+      </section>
+
+      <section id="integrations" className="container mx-auto px-6 py-24">
+        <div className="text-center mb-12">
+          <h3 className="text-3xl font-heading font-bold">
+            Connect everything.
+            <br />
+            Automate anything.
+          </h3>
+          <p className="text-text-muted mt-3">
+            OpsFlow doesn't live in isolation. It's the brain of your entire support ecosystem.
+          </p>
+        </div>
+        <div className="relative mx-auto max-w-3xl h-80 rounded-2xl border border-slate-200 bg-white flex items-center justify-center">
+          <div className="w-24 h-24 rounded-full bg-grad-main text-white flex items-center justify-center font-bold">
+            OpsFlow
+          </div>
+          <div className="absolute w-12 h-12 rounded-full bg-white border border-slate-200 left-8 top-8" />
+          <div className="absolute w-12 h-12 rounded-full bg-white border border-slate-200 right-12 top-10" />
+          <div className="absolute w-12 h-12 rounded-full bg-white border border-slate-200 left-16 bottom-10" />
+          <div className="absolute w-12 h-12 rounded-full bg-white border border-slate-200 right-8 bottom-8" />
+        </div>
+        <div className="text-center mt-8 text-text-muted">
+          If it has an API, OpsFlow can orchestrate it. The only limit is your imagination.
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="border-t border-slate-100 py-12 bg-white/50">
         <div className="container mx-auto px-6 text-center text-text-muted text-sm">
           <p>© 2025 OpsFlow Agent Desk. All rights reserved.</p>
         </div>
       </footer>
+    </div>
+  );
+}
+
+function FeatureTile({
+  icon,
+  status,
+  color,
+  name,
+  description,
+}: {
+  icon: React.ReactNode;
+  status: string;
+  color: 'cyan' | 'purple' | 'pink' | 'green';
+  name: string;
+  description: string;
+}) {
+  const glow =
+    color === 'cyan'
+      ? 'shadow-[0_0_30px_rgba(0,240,255,0.25)]'
+      : color === 'purple'
+        ? 'shadow-[0_0_30px_rgba(176,38,255,0.25)]'
+        : color === 'pink'
+          ? 'shadow-[0_0_30px_rgba(255,0,128,0.25)]'
+          : 'shadow-[0_0_30px_rgba(0,255,148,0.25)]';
+  const badge = status.includes('Coming')
+    ? 'bg-purple-100 text-purple-700 border border-purple-200'
+    : 'bg-green-100 text-green-700 border border-green-200';
+  return (
+    <div
+      className={`p-6 rounded-2xl bg-white border border-slate-200 hover:shadow-lg transition-all ${glow}`}
+    >
+      <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center mb-4 text-text-primary">
+        {icon}
+      </div>
+      <div className={`inline-flex px-2 py-0.5 rounded-full text-xs mb-2 ${badge}`}>{status}</div>
+      <h4 className="text-lg font-bold text-text-primary mb-1">{name}</h4>
+      <p className="text-text-muted text-sm leading-relaxed">{description}</p>
     </div>
   );
 }
