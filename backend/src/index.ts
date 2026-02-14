@@ -12,6 +12,7 @@ import ticketsRouter from './routes/tickets';
 import dashboardRouter from './routes/dashboard';
 import clientsRouter from './routes/clients';
 import emailRouter from './routes/email';
+import actionsRouter from './routes/actions';
 
 dotenv.config();
 
@@ -65,6 +66,7 @@ app.use('/tickets', ticketsRouter);
 app.use('/dashboard', dashboardRouter);
 app.use('/clients', clientsRouter);
 app.use('/email', emailRouter);
+app.use('/actions', actionsRouter);
 
 app.get('/', (req: Request, res: Response) => {
   res.send('OpsFlow Agent Desk API');

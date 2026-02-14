@@ -11,6 +11,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Team } from './pages/Team';
 import { Clients } from './pages/Clients';
 import { Settings } from './pages/Settings';
+import { Profile } from './pages/Profile';
 import { AppShell } from './components/layout/AppShell';
 
 function App() {
@@ -32,6 +33,7 @@ function App() {
           <Route path="team" element={<Team />} />
           <Route path="clients" element={<Clients />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="profile" element={<Profile />} />
         </Route>
       </Routes>
     </BrowserRouter>

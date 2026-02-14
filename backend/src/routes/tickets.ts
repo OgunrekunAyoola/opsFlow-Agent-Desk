@@ -6,6 +6,7 @@ import TicketReply from '../models/TicketReply';
 import User from '../models/User';
 import { EmailService } from '../services/EmailService';
 import { emailSendQueue } from '../queue/index';
+import UserAction from '../models/UserAction';
 
 const router = Router();
 
@@ -179,6 +180,15 @@ router.post('/:id/reply', requireAuth, async (req, res) => {
   }
 
   await reply.populate('authorId', 'name email');
+  try {
+    await UserAction.create({
+      tenantId,
+      userId,
+      type: 'ticket_reply',
+      subjectId: reply._id,
+      meta: { ticketId: id },
+    });
+  } catch {}
 
   res.status(201).json(reply);
 });

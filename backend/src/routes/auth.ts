@@ -11,6 +11,7 @@ import {
 import Tenant from '../models/Tenant';
 import User from '../models/User';
 import { requireAuth } from '../middleware/auth';
+import UserAction from '../models/UserAction';
 
 const router = Router();
 
@@ -115,6 +116,9 @@ router.post('/login', async (req, res) => {
   const access = signAccessToken(user);
   const refresh = signRefreshToken(user);
   res.cookie(refreshCookieName, refresh, refreshCookieOptions);
+  try {
+    await UserAction.create({ tenantId: user.tenantId, userId: user._id, type: 'login' });
+  } catch {}
   res.json({
     access_token: access,
     user: {
@@ -314,8 +318,40 @@ router.get('/me', requireAuth, async (req, res) => {
       role: user?.role,
       isEmailVerified: user?.isEmailVerified,
     },
-    tenant: { id: tenant?._id, name: tenant?.name },
+    tenant: { id: tenant?._id, name: tenant?.name, inboundAddress: tenant?.inboundAddress },
   });
+});
+
+router.patch('/profile', requireAuth, async (req, res) => {
+  const ctx = (req as any).currentUser;
+  const { name } = req.body || {};
+  if (!name || typeof name !== 'string') return res.status(400).json({ error: 'invalid' });
+  const user = await User.findOneAndUpdate(
+    { _id: ctx.userId, tenantId: ctx.tenantId },
+    { $set: { name } },
+    { new: true },
+  ).exec();
+  if (!user) return res.status(404).json({ error: 'not_found' });
+  await UserAction.create({ tenantId: ctx.tenantId, userId: ctx.userId, type: 'profile_update' });
+  res.json({ id: user._id, name: user.name, email: user.email, role: user.role });
+});
+
+router.post('/change-password', requireAuth, async (req, res) => {
+  const ctx = (req as any).currentUser;
+  const { currentPassword, newPassword } = req.body || {};
+  if (!currentPassword || !newPassword) return res.status(400).json({ error: 'invalid' });
+  const user = await User.findById(ctx.userId).exec();
+  if (!user) return res.status(404).json({ error: 'not_found' });
+  const ok = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!ok) return res.status(400).json({ error: 'invalid_current_password' });
+  if (newPassword.length < 8) return res.status(400).json({ error: 'weak_password' });
+  if (!/[A-Z]/.test(newPassword)) return res.status(400).json({ error: 'weak_password' });
+  if (!/[0-9]/.test(newPassword)) return res.status(400).json({ error: 'weak_password' });
+  const hash = await bcrypt.hash(newPassword, 12);
+  user.passwordHash = hash;
+  await user.save();
+  await UserAction.create({ tenantId: ctx.tenantId, userId: ctx.userId, type: 'password_change' });
+  res.json({ ok: true });
 });
 
 export default router;
