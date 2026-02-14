@@ -6,9 +6,11 @@ export interface ITicketReply extends Document {
   authorType: 'ai' | 'human';
   authorId?: mongoose.Types.ObjectId;
   body: string;
-  deliveryStatus?: 'queued' | 'sent' | 'failed';
+  deliveryStatus?: 'queued' | 'sent' | 'delivered' | 'bounced' | 'complained' | 'failed';
   deliveredAt?: Date;
   deliveryProvider?: string;
+  providerMessageId?: string;
+  deliveryError?: string;
   createdAt: Date;
 }
 
@@ -19,9 +21,14 @@ const TicketReplySchema: Schema = new Schema(
     authorType: { type: String, enum: ['ai', 'human'], required: true },
     authorId: { type: Schema.Types.ObjectId, ref: 'User' },
     body: { type: String, required: true },
-    deliveryStatus: { type: String, enum: ['queued', 'sent', 'failed'] },
+    deliveryStatus: {
+      type: String,
+      enum: ['queued', 'sent', 'delivered', 'bounced', 'complained', 'failed'],
+    },
     deliveredAt: { type: Date },
     deliveryProvider: { type: String },
+    providerMessageId: { type: String, index: true },
+    deliveryError: { type: String },
   },
   { timestamps: true },
 );

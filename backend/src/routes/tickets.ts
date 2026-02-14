@@ -5,6 +5,7 @@ import Client from '../models/Client';
 import TicketReply from '../models/TicketReply';
 import User from '../models/User';
 import { EmailService } from '../services/EmailService';
+import { emailSendQueue } from '../queue/index';
 
 const router = Router();
 
@@ -167,21 +168,14 @@ router.post('/:id/reply', requireAuth, async (req, res) => {
   }
 
   if (ticket.customerEmail) {
-    const email = new EmailService();
-    const result = await email.send({
+    reply.deliveryStatus = 'queued';
+    await reply.save();
+    await emailSendQueue.add('send', {
+      replyId: reply._id.toString(),
       to: ticket.customerEmail,
       subject: `Re: ${ticket.subject}`,
-      text: body,
+      body,
     });
-    if (result.status === 'sent' || result.status === 'queued') {
-      reply.deliveryStatus = result.status;
-      reply.deliveredAt = new Date();
-      reply.deliveryProvider = result.provider;
-    } else {
-      reply.deliveryStatus = 'failed';
-      reply.deliveryProvider = result.provider;
-    }
-    await reply.save();
   }
 
   await reply.populate('authorId', 'name email');

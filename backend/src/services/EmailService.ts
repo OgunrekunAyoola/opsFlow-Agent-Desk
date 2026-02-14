@@ -10,6 +10,7 @@ export type EmailResult = {
   status: 'sent' | 'queued' | 'failed';
   provider?: string;
   error?: string;
+  providerMessageId?: string;
 };
 
 export class EmailService {
@@ -38,7 +39,12 @@ export class EmailService {
       try {
         const res = await this.resendRequest('/emails', payload);
         if (res.statusCode >= 200 && res.statusCode < 300) {
-          return { status: 'sent', provider: 'resend' };
+          let providerMessageId: string | undefined;
+          try {
+            const parsed = JSON.parse(res.body || '{}');
+            providerMessageId = parsed?.id || parsed?.data?.id;
+          } catch {}
+          return { status: 'sent', provider: 'resend', providerMessageId };
         }
         return { status: 'failed', provider: 'resend', error: res.body };
       } catch (err: any) {

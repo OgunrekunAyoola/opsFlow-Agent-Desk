@@ -22,6 +22,10 @@ services:
         sync: false
       - key: GEMINI_API_KEY
         sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
 
   - type: static_site
     name: opsflow-frontend
@@ -31,4 +35,27 @@ services:
     autoDeploy: true
     envVars:
       - key: VITE_API_URL
+        sync: false
+
+  - type: worker
+    name: opsflow-worker
+    env: node
+    rootDir: backend
+    plan: starter
+    region: oregon
+    buildCommand: npm ci && npm run build
+    startCommand: node dist/worker.js
+    autoDeploy: true
+    envVars:
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: REDIS_URL
         sync: false

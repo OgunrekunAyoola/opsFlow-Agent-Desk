@@ -25,6 +25,18 @@ console.log(`Configured port: ${port}`);
 // Connect to DB but don't block startup
 connectDB().then(() => console.log('DB Connection attempt finished'));
 
+const isReverseProxy =
+  Boolean(
+    process.env.RENDER ||
+    process.env.DYNO ||
+    process.env.RAILWAY_STATIC_URL ||
+    process.env.FLY_APP_NAME ||
+    process.env.VERCEL,
+  ) || process.env.NODE_ENV === 'production';
+if (isReverseProxy) {
+  app.set('trust proxy', 1);
+}
+
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200 });
 app.use(helmet());
 app.use(cookieParser());
@@ -39,7 +51,13 @@ if (frontendUrl) {
 } else {
   app.use(cors());
 }
-app.use(express.json());
+app.use(
+  express.json({
+    verify: (req, _res, buf) => {
+      (req as any).rawBody = buf;
+    },
+  }),
+);
 app.use(limiter);
 app.use('/auth', authRouter);
 app.use('/users', usersRouter);
