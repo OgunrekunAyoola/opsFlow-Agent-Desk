@@ -105,13 +105,12 @@ export function Landing() {
             >
               Pricing
             </a>
-            <a
-              href="#docs"
-              className={`text-white/80 hover:text-white border-b-2 ${activeHash === '#docs' ? 'border-white' : 'border-transparent'}`}
-              aria-current={activeHash === '#docs' ? 'page' : undefined}
+            <Link
+              to="/docs"
+              className="text-white/80 hover:text-white border-b-2 border-transparent"
             >
               Docs
-            </a>
+            </Link>
           </div>
           <div className="flex items-center gap-4">
             <Link to="/login" className="text-sm font-medium text-white/80 hover:text-white">
@@ -465,9 +464,9 @@ export function Landing() {
                   </a>
                 </li>
                 <li>
-                  <a href="#docs" className="hover:text-white">
+                  <Link to="/docs" className="hover:text-white">
                     Docs
-                  </a>
+                  </Link>
                 </li>
               </ul>
             </div>
@@ -647,6 +646,7 @@ function HeroCanvas() {
       typeof window !== 'undefined' &&
       window.matchMedia &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let cleanup: (() => void) | null = null;
     import('three').then((THREE) => {
       const m = mountRef.current;
       if (!m) return;
@@ -754,9 +754,12 @@ function HeroCanvas() {
       });
       io.observe(m);
       if (!reduce) animate();
-      const cleanup = () => {
+      cleanup = () => {
         running = false;
-        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+        if (rafRef.current) {
+          cancelAnimationFrame(rafRef.current);
+          rafRef.current = null;
+        }
         window.removeEventListener('resize', onResize);
         renderer?.dispose();
         geo.dispose();
@@ -765,18 +768,18 @@ function HeroCanvas() {
         ringGeo.dispose();
         if (m && canvas) m.removeChild(canvas);
       };
-      const endObs = new IntersectionObserver((entries) => {
-        const out = entries.every((e) => !e.isIntersecting);
-        if (out) cleanup();
-      });
-      endObs.observe(m);
     });
     return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      const m = mountEl;
-      if (m) {
-        const c = m.querySelector('canvas');
-        if (c) m.removeChild(c);
+      running = false;
+      if (cleanup) {
+        cleanup();
+      } else {
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+        const m = mountEl;
+        if (m) {
+          const c = m.querySelector('canvas');
+          if (c) m.removeChild(c);
+        }
       }
     };
   }, []);

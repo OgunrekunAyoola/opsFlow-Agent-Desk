@@ -24,9 +24,9 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
-      // Auto-logout on 401
+      const current = window.location.pathname + window.location.search;
       localStorage.removeItem('access_token');
-      window.location.href = '/login?expired=true';
+      window.location.href = `/login?expired=true&next=${encodeURIComponent(current)}`;
     }
     return Promise.reject(error);
   },

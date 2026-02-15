@@ -152,6 +152,36 @@ router.post('/verify-email', async (req, res) => {
   res.json({ message: 'Email verified successfully' });
 });
 
+router.post('/resend-verification', async (req, res) => {
+  const { email } = req.body || {};
+  if (!email) return res.status(400).json({ error: 'Email is required' });
+
+  const user = await User.findOne({ email }).exec();
+  if (!user) {
+    return res.json({ message: 'If an account exists, a verification email has been resent.' });
+  }
+
+  if (user.isEmailVerified) {
+    return res.json({ message: 'Email is already verified.' });
+  }
+
+  const verificationToken = crypto.randomBytes(32).toString('hex');
+  const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  user.verificationToken = verificationToken;
+  user.verificationTokenExpires = verificationTokenExpires;
+  await user.save();
+
+  console.log('================================================');
+  console.log(`[EMAIL MOCK] To: ${email}`);
+  console.log(`[EMAIL MOCK] Subject: Verify your OpsFlow account (resend)`);
+  console.log(
+    `[EMAIL MOCK] Link: http://localhost:5173/verify-email?token=${verificationToken}`,
+  );
+  console.log('================================================');
+
+  res.json({ message: 'Verification email resent.' });
+});
+
 router.post('/social-login', async (req, res) => {
   // Mock Social Login
   // In a real app, we would verify the token from Google/Apple here

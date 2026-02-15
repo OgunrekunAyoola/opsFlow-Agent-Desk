@@ -32,7 +32,9 @@ export function Login() {
       const { access_token } = res.data;
       localStorage.setItem('access_token', access_token);
       toast.success('Welcome back!');
-      navigate('/dashboard');
+      const params = new URLSearchParams(location.search);
+      const next = params.get('next');
+      navigate(next || '/dashboard', { replace: true });
     } catch (err) {
       const isTimeout = (err as any)?.code === 'ECONNABORTED';
       const msg = isTimeout ? 'Request timed out. Please try again.' : 'Invalid email or password';

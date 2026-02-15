@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Landing } from './pages/Landing';
 import { Login } from './pages/Login';
 import { Signup } from './pages/Signup';
@@ -12,7 +12,20 @@ import { Team } from './pages/Team';
 import { Clients } from './pages/Clients';
 import { Settings } from './pages/Settings';
 import { Profile } from './pages/Profile';
+import { Pricing } from './pages/Pricing';
+import { Docs } from './pages/Docs';
 import { AppShell } from './components/layout/AppShell';
+import { NotFound } from './pages/NotFound';
+
+function RequireAuth() {
+  const location = useLocation();
+  const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+  if (!token) {
+    const next = encodeURIComponent(location.pathname + location.search);
+    return <Navigate to={`/login?expired=true&next=${next}`} replace />;
+  }
+  return <AppShell />;
+}
 
 function App() {
   return (
@@ -24,9 +37,10 @@ function App() {
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/pricing" element={<Pricing />} />
+        <Route path="/docs" element={<Docs />} />
 
-        {/* Protected Routes */}
-        <Route element={<AppShell />}>
+        <Route element={<RequireAuth />}>
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="tickets" element={<Tickets />} />
           <Route path="tickets/:id" element={<TicketDetail />} />
@@ -35,6 +49,7 @@ function App() {
           <Route path="settings" element={<Settings />} />
           <Route path="profile" element={<Profile />} />
         </Route>
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   );
