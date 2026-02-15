@@ -70,6 +70,35 @@ describe('Tickets page', () => {
 
     await waitFor(() => {
       expect(apiMock.get).toHaveBeenCalled();
+      const lastCall = (apiMock.get as any).mock.calls.at(-1);
+      expect(lastCall[0]).toBe('/tickets');
+      expect(lastCall[1].params.status).toBe('new');
+    });
+  });
+
+  it('applies search term when typing in search input', async () => {
+    apiMock.get.mockResolvedValue({
+      data: {
+        items: [],
+        total: 0,
+        page: 1,
+        pageSize: 20,
+      },
+    });
+
+    renderWithRouter();
+
+    const searchInput = screen.getByPlaceholderText('Search tickets...');
+
+    fireEvent.change(searchInput, {
+      target: { value: 'login' },
+    });
+
+    await waitFor(() => {
+      expect(apiMock.get).toHaveBeenCalled();
+      const lastCall = (apiMock.get as any).mock.calls.at(-1);
+      expect(lastCall[0]).toBe('/tickets');
+      expect(lastCall[1].params.search).toBe('login');
     });
   });
 });

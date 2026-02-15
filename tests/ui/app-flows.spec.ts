@@ -1,6 +1,6 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 
-async function createTenantAndLogin(page) {
+async function createTenantAndLogin(page: Page) {
   const email = `agent+${Date.now().toString(36)}@example.com`;
 
   await page.goto('/signup');
