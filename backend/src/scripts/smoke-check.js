@@ -1,8 +1,11 @@
-const base = 'http://127.0.0.1:3000';
+const base = process.env.SMOKE_BASE_URL || 'http://127.0.0.1:3000';
 const http = require('http');
 const https = require('https');
-function req(method, path, body, headers = {}) {
-  const url = new URL(base + path);
+const fs = require('fs');
+const path = require('path');
+
+function req(method, requestPath, body, headers = {}) {
+  const url = new URL(base + requestPath);
   const lib = url.protocol === 'https:' ? https : http;
   const opts = {
     method,
@@ -11,13 +14,16 @@ function req(method, path, body, headers = {}) {
     path: url.pathname + (url.search || ''),
     headers: { 'Content-Type': 'application/json', ...headers },
   };
+
   return new Promise((resolve, reject) => {
     const r = lib.request(opts, (res) => {
       let data = '';
-      res.on('data', (chunk) => (data += chunk));
+      res.on('data', (chunk) => {
+        data += chunk;
+      });
       res.on('end', () => {
         if (res.statusCode < 200 || res.statusCode >= 300) {
-          return reject(new Error(`${method} ${path} ${res.statusCode} ${data}`));
+          return reject(new Error(`${method} ${requestPath} ${res.statusCode} ${data}`));
         }
         try {
           const ct = res.headers['content-type'] || '';
@@ -31,24 +37,37 @@ function req(method, path, body, headers = {}) {
         }
       });
     });
+
     r.on('error', reject);
-    if (body) r.write(JSON.stringify(body));
+    if (body) {
+      r.write(JSON.stringify(body));
+    }
     r.end();
   });
 }
+
 async function main() {
   const health = await req('GET', '/health');
-  if (!(health && health.status === 'ok')) throw new Error('health failed');
+  if (!health || health.status !== 'ok') {
+    throw new Error('health failed');
+  }
+
   const ts = Date.now();
   const email = `smoke+${ts}@example.com`;
+
   const signup = await req('POST', '/auth/signup', {
     tenantName: 'SmokeCo',
     name: 'Smoke Tester',
     email,
     password: 'Passw0rd!',
   });
-  if (!signup || !signup.access_token) throw new Error('signup failed');
+
+  if (!signup || !signup.access_token) {
+    throw new Error('signup failed');
+  }
+
   const headers = { Authorization: `Bearer ${signup.access_token}` };
+
   const ticket = await req(
     'POST',
     '/tickets',
@@ -60,17 +79,40 @@ async function main() {
     },
     headers,
   );
-  if (!ticket || !ticket._id) throw new Error('ticket creation failed');
+
+  if (!ticket || !ticket._id) {
+    throw new Error('ticket creation failed');
+  }
+
   await req('POST', `/tickets/${ticket._id}/workflows/triage`, {}, headers);
   await req('POST', `/tickets/${ticket._id}/reply`, { body: 'Smoke test reply OK' }, headers);
+
   const details = await req('GET', `/tickets/${ticket._id}`, null, headers);
+
   const search = await req(
     'GET',
-  const fs = require('fs');
-  fs.writeFileSync(require('path').join(__dirname, '../../smoke-output.json'), JSON.stringify(result, null, 2));
-  console.log(JSON.stringify(result, null, 2));
+    `/tickets?search=${encodeURIComponent(`Smoke Test ${ts}`)}`,
     null,
     headers,
   );
+
   const result = {
     health,
+    signup: {
+      userId: signup.user && signup.user._id,
+      tenantId: signup.user && signup.user.tenantId,
+    },
+    ticketId: ticket._id,
+    details,
+    search,
+  };
+
+  const outputPath = path.join(__dirname, '../../smoke-output.json');
+  fs.writeFileSync(outputPath, JSON.stringify(result, null, 2));
+  console.log(JSON.stringify(result, null, 2));
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

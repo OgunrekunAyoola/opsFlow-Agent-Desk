@@ -1,4 +1,5 @@
-import { Check } from 'lucide-react';
+import { useState } from 'react';
+import { Check, Menu, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 
@@ -40,33 +41,120 @@ const PLANS = [
 ];
 
 export function Pricing() {
+  const [mobileOpen, setMobileOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <header className="border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-xl shadow-[0_18px_45px_rgba(15,23,42,0.85)]">
-        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
+        <div className="container mx-auto px-6 py-4 flex items-center justify-between gap-4">
+          <Link to="/" className="flex items-center gap-2 group">
             <div className="h-8 w-8 rounded-md bg-white/5 flex items-center justify-center">
               <span className="text-xs font-bold text-cyan-300">OF</span>
             </div>
             <div className="flex flex-col">
-              <span className="font-heading font-semibold text-sm tracking-tight text-white">
+              <span className="font-heading font-semibold text-sm tracking-tight text-white group-hover:text-cyan-200 transition-colors">
                 OpsFlow
               </span>
               <span className="text-[11px] text-white/60">Customer Operations Platform</span>
             </div>
           </Link>
+          <nav className="hidden md:flex items-center gap-6 text-sm">
+            <Link
+              to="/#features-future"
+              className="px-3 py-1 rounded-full font-medium text-slate-200/80 hover:text-white hover:bg-slate-800/70 transition-colors"
+            >
+              Features
+            </Link>
+            <Link
+              to="/#integrations"
+              className="px-3 py-1 rounded-full font-medium text-slate-200/80 hover:text-white hover:bg-slate-800/70 transition-colors"
+            >
+              Integrations
+            </Link>
+            <Link
+              to="/pricing"
+              className="px-3 py-1 rounded-full font-medium text-slate-200/80 hover:text-white hover:bg-slate-800/70 transition-colors"
+            >
+              Pricing
+            </Link>
+            <Link
+              to="/docs"
+              className="px-3 py-1 rounded-full font-medium text-slate-200/80 hover:text-white hover:bg-slate-800/70 transition-colors"
+            >
+              Docs
+            </Link>
+          </nav>
           <div className="flex items-center gap-3">
-            <Link to="/login" className="text-sm text-white/80 hover:text-white">
-              Log in
-            </Link>
-            <Link to="/signup">
-              <Button size="sm" className="bg-grad-main text-white">
-                Start free
-              </Button>
-            </Link>
+            <div className="hidden sm:flex items-center gap-3">
+              <Link to="/login" className="text-sm text-white/80 hover:text-white">
+                Log in
+              </Link>
+              <Link to="/signup">
+                <Button size="sm" className="bg-grad-main text-white">
+                  Start free
+                </Button>
+              </Link>
+            </div>
+            <button
+              type="button"
+              className="inline-flex md:hidden h-9 w-9 items-center justify-center rounded-md border border-slate-700 bg-slate-900/70 text-slate-100 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+              aria-label="Toggle navigation"
+              aria-expanded={mobileOpen}
+              onClick={() => setMobileOpen((open) => !open)}
+            >
+              {mobileOpen ? <X size={18} /> : <Menu size={18} />}
+            </button>
           </div>
         </div>
       </header>
+      {mobileOpen && (
+        <div className="md:hidden border-b border-slate-800/80 bg-slate-950/95 backdrop-blur-xl shadow-[0_18px_45px_rgba(15,23,42,0.9)]">
+          <div className="container mx-auto px-6 py-3 space-y-2">
+            <Link
+              to="/#features-future"
+              className="flex items-center rounded-lg px-3 py-2 text-sm text-slate-200/90 hover:text-white hover:bg-slate-800/80"
+              onClick={() => setMobileOpen(false)}
+            >
+              Features
+            </Link>
+            <Link
+              to="/#integrations"
+              className="flex items-center rounded-lg px-3 py-2 text-sm text-slate-200/90 hover:text-white hover:bg-slate-800/80"
+              onClick={() => setMobileOpen(false)}
+            >
+              Integrations
+            </Link>
+            <Link
+              to="/pricing"
+              className="flex items-center rounded-lg px-3 py-2 text-sm text-slate-200/90 hover:text-white hover:bg-slate-800/80"
+              onClick={() => setMobileOpen(false)}
+            >
+              Pricing
+            </Link>
+            <Link
+              to="/docs"
+              className="flex items-center rounded-lg px-3 py-2 text-sm text-slate-200/90 hover:text-white hover:bg-slate-800/80"
+              onClick={() => setMobileOpen(false)}
+            >
+              Docs
+            </Link>
+            <div className="pt-3 mt-1 border-t border-slate-800/80 space-y-3">
+              <Link
+                to="/login"
+                className="flex items-center rounded-lg px-3 py-2 text-sm text-slate-200/90 hover:text-white hover:bg-slate-800/80"
+                onClick={() => setMobileOpen(false)}
+              >
+                Log in
+              </Link>
+              <Link to="/signup" onClick={() => setMobileOpen(false)}>
+                <Button className="w-full h-11 bg-grad-main text-white shadow-lg">
+                  Start free
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
       <main className="relative">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.12),_transparent_55%),radial-gradient(circle_at_bottom,_rgba(129,140,248,0.18),_transparent_60%)] pointer-events-none" />
         <div className="relative container mx-auto px-6 py-12 lg:py-16 space-y-10">

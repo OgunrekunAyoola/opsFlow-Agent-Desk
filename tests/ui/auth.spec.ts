@@ -6,6 +6,40 @@ function uniqueEmail() {
 }
 
 test.describe('Authentication and landing', () => {
+  test('mobile hamburger menu works on landing, pricing, and docs', async ({ page }) => {
+    // 375px (iPhone SE style)
+    await page.setViewportSize({ width: 375, height: 667 });
+
+    await page.goto('/');
+    await page.getByRole('button', { name: /toggle navigation/i }).click();
+    await expect(page.getByRole('link', { name: /pricing/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /docs/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /start free/i })).toBeVisible();
+    await page.getByRole('button', { name: /toggle navigation/i }).click();
+
+    await page.goto('/pricing');
+    await page.getByRole('button', { name: /toggle navigation/i }).click();
+    await expect(page.getByRole('link', { name: /pricing/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /docs/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /start free/i })).toBeVisible();
+    await page.getByRole('button', { name: /toggle navigation/i }).click();
+
+    await page.goto('/docs');
+    await page.getByRole('button', { name: /toggle navigation/i }).click();
+    await expect(page.getByRole('link', { name: /pricing/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /docs/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /start free/i })).toBeVisible();
+    await page.getByRole('button', { name: /toggle navigation/i }).click();
+
+    // 768px (tablet) and 1024px (small desktop) still render correctly
+    await page.setViewportSize({ width: 768, height: 900 });
+    await page.goto('/');
+    await expect(page.getByText('OpsFlow')).toBeVisible();
+
+    await page.setViewportSize({ width: 1024, height: 900 });
+    await page.goto('/');
+    await expect(page.getByText('OpsFlow')).toBeVisible();
+  });
   test('landing to login/signup/docs/pricing navigation works', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByText('OpsFlow')).toBeVisible();
@@ -67,4 +101,3 @@ test.describe('Authentication and landing', () => {
     await expect(page.getByText(/invalid or expired/i)).toBeVisible();
   });
 });
-
