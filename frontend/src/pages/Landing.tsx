@@ -72,56 +72,68 @@ export function Landing() {
         Skip to content
       </a>
       <nav
-        className="fixed top-0 left-0 right-0 z-50 backdrop-blur bg-white/5 border-b border-white/10"
+        className="fixed top-0 left-0 right-0 z-50 bg-[#050816]/90 border-b border-white/10 backdrop-blur"
         role="navigation"
         aria-label="Primary"
       >
-        <div className="container mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-grad-main flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
-              <Bot size={24} />
+        <div className="container mx-auto px-6 h-16 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-md bg-white/5 flex items-center justify-center">
+              <Bot size={18} className="text-cyan-300" />
             </div>
-            <span className="font-heading font-bold text-xl tracking-tight">OpsFlow</span>
-          </div>
-          <div className="hidden md:flex items-center gap-8 text-sm">
+            <div className="flex flex-col">
+              <span className="font-heading font-semibold text-sm tracking-tight">OpsFlow</span>
+              <span className="text-[11px] text-white/50">Customer Operations Platform</span>
+            </div>
+          </Link>
+          <div className="hidden md:flex items-center gap-6 text-sm">
             <a
               href="#features-future"
-              className={`text-white/80 hover:text-white border-b-2 ${activeHash === '#features-future' ? 'border-white' : 'border-transparent'}`}
+              className={`px-3 py-1 rounded-full font-medium transition-colors ${
+                activeHash === '#features-future'
+                  ? 'bg-white/10 text-white'
+                  : 'text-white/70 hover:text-white hover:bg-white/5'
+              }`}
               aria-current={activeHash === '#features-future' ? 'page' : undefined}
             >
               Features
             </a>
             <a
               href="#integrations"
-              className={`text-white/80 hover:text-white border-b-2 ${activeHash === '#integrations' ? 'border-white' : 'border-transparent'}`}
+              className={`px-3 py-1 rounded-full font-medium transition-colors ${
+                activeHash === '#integrations'
+                  ? 'bg-white/10 text-white'
+                  : 'text-white/70 hover:text-white hover:bg-white/5'
+              }`}
               aria-current={activeHash === '#integrations' ? 'page' : undefined}
             >
               Integrations
             </a>
             <a
               href="#pricing"
-              className={`text-white/80 hover:text-white border-b-2 ${activeHash === '#pricing' ? 'border-white' : 'border-transparent'}`}
+              className={`px-3 py-1 rounded-full font-medium transition-colors ${
+                activeHash === '#pricing'
+                  ? 'bg-white/10 text-white'
+                  : 'text-white/70 hover:text-white hover:bg-white/5'
+              }`}
               aria-current={activeHash === '#pricing' ? 'page' : undefined}
             >
               Pricing
             </a>
             <Link
               to="/docs"
-              className="text-white/80 hover:text-white border-b-2 border-transparent"
+              className="px-3 py-1 rounded-full font-medium text-white/70 hover:text-white hover:bg-white/5 transition-colors"
             >
               Docs
             </Link>
           </div>
-          <div className="flex items-center gap-4">
-            <Link to="/login" className="text-sm font-medium text-white/80 hover:text-white">
+          <div className="flex items-center gap-3">
+            <Link to="/login" className="text-sm font-medium text-white/70 hover:text-white">
               Log in
             </Link>
             <Link to="/signup">
-              <Button
-                size="sm"
-                className="hidden sm:flex bg-grad-main text-white shadow-lg hover:shadow-xl"
-              >
-                Start Free <ArrowRight size={16} className="ml-2" />
+              <Button size="sm" className="hidden sm:inline-flex bg-grad-main text-white">
+                Start free <ArrowRight size={16} className="ml-2" />
               </Button>
             </Link>
           </div>

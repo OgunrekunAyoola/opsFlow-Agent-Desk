@@ -1,4 +1,4 @@
-import { Check, Zap, Rocket, Shield } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 
@@ -9,7 +9,6 @@ const PLANS = [
     period: 'forever',
     badge: 'Sandbox',
     highlight: false,
-    icon: Zap,
     features: ['Up to 3 teammates', 'Email channel only', 'AI triage in preview mode'],
   },
   {
@@ -18,7 +17,6 @@ const PLANS = [
     period: 'per agent / month',
     badge: 'Most popular',
     highlight: true,
-    icon: Rocket,
     features: [
       'Unlimited teammates',
       'Multiple brands and inboxes',
@@ -32,7 +30,6 @@ const PLANS = [
     period: 'custom',
     badge: 'Enterprise',
     highlight: false,
-    icon: Shield,
     features: [
       'Custom data retention and SSO',
       'Dedicated onboarding engineer',
@@ -45,7 +42,7 @@ const PLANS = [
 export function Pricing() {
   return (
     <div className="min-h-screen bg-page text-white">
-      <header className="border-b border-white/10">
+      <header className="border-b border-white/10 bg-[#050816]/95 backdrop-blur">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <Link to="/" className="font-heading font-bold text-xl">
             OpsFlow
@@ -62,43 +59,37 @@ export function Pricing() {
           </div>
         </div>
       </header>
-      <main className="container mx-auto px-6 py-16">
-        <div className="text-center max-w-2xl mx-auto mb-12">
+      <main className="container mx-auto px-6 py-16 space-y-10">
+        <div className="max-w-3xl">
           <p className="text-xs uppercase tracking-[0.25em] text-white/60 mb-3">Pricing</p>
           <h1 className="text-4xl md:text-5xl font-heading font-bold mb-4">
-            Plans that scale with your support team
+            Clear plans for serious support teams
           </h1>
-          <p className="text-white/70">
-            Start free, switch plans as you grow, and keep every agent operating with an AI copilot
-            from day one.
+          <p className="text-white/70 text-base">
+            Choose a plan that matches your volume and complexity. All plans share the same core
+            platform, security model, and API surface; you only scale up when your operations do.
           </p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
           {PLANS.map((plan) => {
-            const Icon = plan.icon;
             return (
               <div
                 key={plan.name}
-                className={`rounded-2xl border ${
+                className={`glass-panel rounded-2xl border p-6 flex flex-col gap-4 ${
                   plan.highlight
-                    ? 'border-cyan-400 bg-white/10 shadow-xl'
-                    : 'border-white/10 bg-white/5'
-                } p-6 flex flex-col gap-4`}
+                    ? 'border-cyan-300/80 ring-1 ring-cyan-300/30'
+                    : 'border-white/10'
+                }`}
               >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm uppercase tracking-wide text-white/60">{plan.name}</div>
-                    <div className="mt-3 flex items-end gap-1">
-                      <span className="text-3xl font-heading font-bold">{plan.price}</span>
-                      <span className="text-xs text-white/60 mb-1">{plan.period}</span>
-                    </div>
+                <div className="space-y-2">
+                  <div className="text-xs uppercase tracking-[0.18em] text-white/50">
+                    {plan.badge}
                   </div>
-                  <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-cyan-300">
-                    <Icon size={22} />
+                  <div className="text-lg font-heading font-semibold text-white">{plan.name}</div>
+                  <div className="mt-2 flex items-baseline gap-1">
+                    <span className="text-3xl font-heading font-bold">{plan.price}</span>
+                    <span className="text-xs text-white/60">{plan.period}</span>
                   </div>
-                </div>
-                <div className="inline-flex items-center gap-2 text-xs px-2 py-1 rounded-full bg-white/10 text-white/80 w-fit">
-                  {plan.badge}
                 </div>
                 <ul className="flex-1 space-y-2 text-sm text-white/80 mt-2">
                   {plan.features.map((f) => (
