@@ -12,8 +12,13 @@ import Tenant from '../models/Tenant';
 import User from '../models/User';
 import { requireAuth } from '../middleware/auth';
 import UserAction from '../models/UserAction';
+import { EmailService } from '../services/EmailService';
 
 const router = Router();
+const frontendBaseUrl = (process.env.FRONTEND_BASE_URL || 'http://localhost:5173').replace(
+  /\/+$/,
+  '',
+);
 
 router.post('/signup', async (req, res) => {
   const { tenantName, name, email, password } = req.body || {};
@@ -65,12 +70,16 @@ router.post('/signup', async (req, res) => {
       verificationTokenExpires,
     });
 
-    // Mock Email Sending
-    console.log('================================================');
-    console.log(`[EMAIL MOCK] To: ${email}`);
-    console.log(`[EMAIL MOCK] Subject: Verify your OpsFlow account`);
-    console.log(`[EMAIL MOCK] Link: http://localhost:5173/verify-email?token=${verificationToken}`);
-    console.log('================================================');
+    const emailService = new EmailService();
+    const verifyLink = `${frontendBaseUrl}/verify-email?token=${verificationToken}`;
+    const subject = 'Welcome to OpsFlow – Verify your email';
+    const text = `Hi ${name},\n\nWelcome to OpsFlow.\n\nVerify your email to activate your account:\n${verifyLink}\n\nWorkspace: ${tenantName}\nInbound support email: ${inboundAddress}\n`;
+    const html = `<p>Hi ${name},</p><p>Welcome to OpsFlow.</p><p>Verify your email to activate your account:</p><p><a href="${verifyLink}">${verifyLink}</a></p><p>Workspace: ${tenantName}<br/>Inbound support email: ${inboundAddress}</p>`;
+    try {
+      await emailService.send({ to: email, subject, text, html });
+    } catch (e) {
+      console.error(e);
+    }
 
     // For "Easy Sign In", we allow login immediately but prompt for verification?
     // Or we block?
@@ -170,14 +179,16 @@ router.post('/resend-verification', async (req, res) => {
   user.verificationToken = verificationToken;
   user.verificationTokenExpires = verificationTokenExpires;
   await user.save();
-
-  console.log('================================================');
-  console.log(`[EMAIL MOCK] To: ${email}`);
-  console.log(`[EMAIL MOCK] Subject: Verify your OpsFlow account (resend)`);
-  console.log(
-    `[EMAIL MOCK] Link: http://localhost:5173/verify-email?token=${verificationToken}`,
-  );
-  console.log('================================================');
+  const emailService = new EmailService();
+  const verifyLink = `${frontendBaseUrl}/verify-email?token=${verificationToken}`;
+  const subject = 'Verify your OpsFlow account';
+  const text = `Hi ${user.name},\n\nVerify your email to activate your account:\n${verifyLink}\n`;
+  const html = `<p>Hi ${user.name},</p><p>Verify your email to activate your account:</p><p><a href="${verifyLink}">${verifyLink}</a></p>`;
+  try {
+    await emailService.send({ to: email, subject, text, html });
+  } catch (e) {
+    console.error(e);
+  }
 
   res.json({ message: 'Verification email resent.' });
 });
@@ -247,13 +258,16 @@ router.post('/forgot-password', async (req, res) => {
   user.resetPasswordToken = resetToken;
   user.resetPasswordExpires = new Date(Date.now() + 1 * 60 * 60 * 1000); // 1 hour
   await user.save();
-
-  // Mock Email Sending
-  console.log('================================================');
-  console.log(`[EMAIL MOCK] To: ${email}`);
-  console.log(`[EMAIL MOCK] Subject: Reset your OpsFlow password`);
-  console.log(`[EMAIL MOCK] Link: http://localhost:5173/reset-password?token=${resetToken}`);
-  console.log('================================================');
+  const emailService = new EmailService();
+  const resetLink = `${frontendBaseUrl}/reset-password?token=${resetToken}`;
+  const subject = 'Reset your OpsFlow password';
+  const text = `Hi ${user.name},\n\nYou requested a password reset.\n\nReset your password using this link:\n${resetLink}\nIf you did not request this, you can ignore this email.\n`;
+  const html = `<p>Hi ${user.name},</p><p>You requested a password reset.</p><p>Reset your password using this link:</p><p><a href="${resetLink}">${resetLink}</a></p><p>If you did not request this, you can ignore this email.</p>`;
+  try {
+    await emailService.send({ to: email, subject, text, html });
+  } catch (e) {
+    console.error(e);
+  }
 
   res.json({ message: 'If an account exists, a reset link has been sent.' });
 });

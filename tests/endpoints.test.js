@@ -26,6 +26,10 @@ async function run() {
   inboundAddress = signup.data.inbound?.address;
   const auth = { headers: { Authorization: `Bearer ${adminToken}` } };
 
+  // Forgot password (email flow)
+  const forgot = await axios.post(`${API_URL}/auth/forgot-password`, { email: adminEmail });
+  if (!forgot.data.message) throw new Error('forgot-password failed');
+
   // Auth/me
   const me = await axios.get(`${API_URL}/auth/me`, auth);
   if (!me.data.user?.email) throw new Error('me failed');
@@ -101,3 +105,14 @@ async function run() {
 }
 
 module.exports = { run };
+
+if (require.main === module) {
+  run()
+    .then(() => {
+      process.exit(0);
+    })
+    .catch((err) => {
+      console.error(err);
+      process.exit(1);
+    });
+}

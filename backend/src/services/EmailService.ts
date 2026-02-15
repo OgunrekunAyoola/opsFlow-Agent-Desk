@@ -16,22 +16,25 @@ export type EmailResult = {
 export class EmailService {
   private provider: 'postmark' | 'resend' | 'sendgrid' | 'mock';
   private from: string;
+  private debugOverrideTo?: string;
   constructor() {
     if (process.env.POSTMARK_API_TOKEN) this.provider = 'postmark';
     else if (process.env.RESEND_API_KEY) this.provider = 'resend';
     else if (process.env.SENDGRID_API_KEY) this.provider = 'sendgrid';
     else this.provider = 'mock';
     this.from = process.env.EMAIL_FROM || 'no-reply@opsflow.test';
+    this.debugOverrideTo = process.env.EMAIL_DEBUG_OVERRIDE_TO;
   }
 
   async send(message: EmailMessage): Promise<EmailResult> {
+    const to = this.debugOverrideTo || message.to;
     if (this.provider === 'mock') {
       return { status: 'sent', provider: 'mock' };
     }
     if (this.provider === 'resend') {
       const payload = {
         from: message.from || this.from,
-        to: message.to,
+        to,
         subject: message.subject,
         html: message.html,
         text: message.text,
