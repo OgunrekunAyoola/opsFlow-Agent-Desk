@@ -75,7 +75,7 @@ export function Landing() {
         Skip to content
       </a>
       <nav
-        className="fixed top-0 left-0 right-0 z-50 bg-[#050816]/90 border-b border-white/10 backdrop-blur"
+        className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_18px_45px_rgba(15,23,42,0.6)]"
         role="navigation"
         aria-label="Primary"
       >
@@ -149,52 +149,59 @@ export function Landing() {
           </div>
         </div>
         {mobileOpen && (
-          <div className="md:hidden border-t border-white/10 bg-[#050816]/95">
-            <div className="container mx-auto px-4 sm:px-6 py-4 space-y-4">
+          <div className="md:hidden border-t border-white/10 bg-white/5 backdrop-blur-xl">
+            <div className="container mx-auto px-4 sm:px-6 py-3 space-y-2">
               <a
                 href="#features-future"
-                className="block text-sm text-white/80 hover:text-white py-2"
+                className="flex items-center rounded-lg px-3 py-2 text-sm text-white/80 hover:text-white hover:bg-white/10"
                 onClick={() => setMobileOpen(false)}
               >
                 Features
               </a>
               <a
                 href="#integrations"
-                className="block text-sm text-white/80 hover:text-white py-2"
+                className="flex items-center rounded-lg px-3 py-2 text-sm text-white/80 hover:text-white hover:bg-white/10"
                 onClick={() => setMobileOpen(false)}
               >
                 Integrations
               </a>
               <Link
                 to="/pricing"
-                className="block text-sm text-white/80 hover:text-white py-2"
+                className="flex items-center rounded-lg px-3 py-2 text-sm text-white/80 hover:text-white hover:bg-white/10"
                 onClick={() => setMobileOpen(false)}
               >
                 Pricing
               </Link>
               <Link
                 to="/docs"
-                className="block text-sm text-white/80 hover:text-white py-2"
+                className="flex items-center rounded-lg px-3 py-2 text-sm text-white/80 hover:text-white hover:bg-white/10"
                 onClick={() => setMobileOpen(false)}
               >
                 Docs
               </Link>
-              <div className="pt-3 border-t border-white/10 space-y-3">
+              <div className="pt-4 mt-1 border-t border-white/10 space-y-4">
                 <Link
                   to="/login"
-                  className="block text-sm text-white/80 hover:text-white"
+                  className="flex items-center rounded-lg px-3 py-2 text-sm text-white/80 hover:text-white hover:bg-white/10"
                   onClick={() => setMobileOpen(false)}
                 >
                   Log in
                 </Link>
                 <Link to="/signup" onClick={() => setMobileOpen(false)}>
-                  <Button className="w-full bg-grad-main text-white">Start free</Button>
+                  <Button className="w-full mt-1 bg-grad-main text-white">Start free</Button>
                 </Link>
               </div>
             </div>
           </div>
         )}
       </nav>
+
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm md:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
 
       <header
         className="container mx-auto px-6 pt-36 pb-24 lg:pt-40 lg:pb-40 relative"
