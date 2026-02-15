@@ -21,6 +21,8 @@ import {
   Twitter,
   Linkedin,
   Mail,
+  Menu,
+  X,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import type {
@@ -35,6 +37,7 @@ import type {
 
 export function Landing() {
   const [activeHash, setActiveHash] = useState<string>(() => window.location.hash || '');
+  const [mobileOpen, setMobileOpen] = useState(false);
   useEffect(() => {
     const onHash = () => setActiveHash(window.location.hash || '');
     window.addEventListener('hashchange', onHash);
@@ -76,7 +79,7 @@ export function Landing() {
         role="navigation"
         aria-label="Primary"
       >
-        <div className="container mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="container mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3">
             <div className="h-8 w-8 rounded-md bg-white/5 flex items-center justify-center">
               <Bot size={18} className="text-cyan-300" />
@@ -109,17 +112,12 @@ export function Landing() {
             >
               Integrations
             </a>
-            <a
-              href="#pricing"
-              className={`px-3 py-1 rounded-full font-medium transition-colors ${
-                activeHash === '#pricing'
-                  ? 'bg-white/10 text-white'
-                  : 'text-white/70 hover:text-white hover:bg-white/5'
-              }`}
-              aria-current={activeHash === '#pricing' ? 'page' : undefined}
+            <Link
+              to="/pricing"
+              className="px-3 py-1 rounded-full font-medium text-white/70 hover:text-white hover:bg-white/5 transition-colors"
             >
               Pricing
-            </a>
+            </Link>
             <Link
               to="/docs"
               className="px-3 py-1 rounded-full font-medium text-white/70 hover:text-white hover:bg-white/5 transition-colors"
@@ -127,17 +125,75 @@ export function Landing() {
               Docs
             </Link>
           </div>
-          <div className="flex items-center gap-3">
-            <Link to="/login" className="text-sm font-medium text-white/70 hover:text-white">
+          <div className="flex items-center gap-2">
+            <Link
+              to="/login"
+              className="hidden xs:inline-block text-sm font-medium text-white/70 hover:text-white"
+            >
               Log in
             </Link>
-            <Link to="/signup">
-              <Button size="sm" className="hidden sm:inline-flex bg-grad-main text-white">
+            <Link to="/signup" className="hidden sm:inline-block">
+              <Button size="sm" className="bg-grad-main text-white">
                 Start free <ArrowRight size={16} className="ml-2" />
               </Button>
             </Link>
+            <button
+              type="button"
+              className="inline-flex md:hidden h-9 w-9 items-center justify-center rounded-md border border-white/15 bg-white/5 text-white hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+              aria-label="Toggle navigation"
+              aria-expanded={mobileOpen}
+              onClick={() => setMobileOpen((open) => !open)}
+            >
+              {mobileOpen ? <X size={18} /> : <Menu size={18} />}
+            </button>
           </div>
         </div>
+        {mobileOpen && (
+          <div className="md:hidden border-t border-white/10 bg-[#050816]/95">
+            <div className="container mx-auto px-4 sm:px-6 py-4 space-y-4">
+              <a
+                href="#features-future"
+                className="block text-sm text-white/80 hover:text-white py-2"
+                onClick={() => setMobileOpen(false)}
+              >
+                Features
+              </a>
+              <a
+                href="#integrations"
+                className="block text-sm text-white/80 hover:text-white py-2"
+                onClick={() => setMobileOpen(false)}
+              >
+                Integrations
+              </a>
+              <Link
+                to="/pricing"
+                className="block text-sm text-white/80 hover:text-white py-2"
+                onClick={() => setMobileOpen(false)}
+              >
+                Pricing
+              </Link>
+              <Link
+                to="/docs"
+                className="block text-sm text-white/80 hover:text-white py-2"
+                onClick={() => setMobileOpen(false)}
+              >
+                Docs
+              </Link>
+              <div className="pt-3 border-t border-white/10 space-y-3">
+                <Link
+                  to="/login"
+                  className="block text-sm text-white/80 hover:text-white"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  Log in
+                </Link>
+                <Link to="/signup" onClick={() => setMobileOpen(false)}>
+                  <Button className="w-full bg-grad-main text-white">Start free</Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
       </nav>
 
       <header

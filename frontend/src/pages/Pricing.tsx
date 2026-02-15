@@ -41,7 +41,7 @@ const PLANS = [
 
 export function Pricing() {
   return (
-    <div className="min-h-screen bg-page text-white">
+    <div className="min-h-screen bg-page text-text-primary">
       <header className="border-b border-white/10 bg-[#050816]/95 backdrop-blur">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <Link to="/" className="font-heading font-bold text-xl">
@@ -61,11 +61,11 @@ export function Pricing() {
       </header>
       <main className="container mx-auto px-6 py-16 space-y-10">
         <div className="max-w-3xl">
-          <p className="text-xs uppercase tracking-[0.25em] text-white/60 mb-3">Pricing</p>
+          <p className="text-xs uppercase tracking-[0.25em] text-text-muted mb-3">Pricing</p>
           <h1 className="text-4xl md:text-5xl font-heading font-bold mb-4">
             Clear plans for serious support teams
           </h1>
-          <p className="text-white/70 text-base">
+          <p className="text-text-muted text-base">
             Choose a plan that matches your volume and complexity. All plans share the same core
             platform, security model, and API surface; you only scale up when your operations do.
           </p>
@@ -76,22 +76,22 @@ export function Pricing() {
               <div
                 key={plan.name}
                 className={`glass-panel rounded-2xl border p-6 flex flex-col gap-4 ${
-                  plan.highlight
-                    ? 'border-cyan-300/80 ring-1 ring-cyan-300/30'
-                    : 'border-white/10'
+                  plan.highlight ? 'border-cyan-300/80 ring-1 ring-cyan-300/30' : 'border-white/10'
                 }`}
               >
                 <div className="space-y-2">
-                  <div className="text-xs uppercase tracking-[0.18em] text-white/50">
+                  <div className="text-xs uppercase tracking-[0.18em] text-text-muted">
                     {plan.badge}
                   </div>
-                  <div className="text-lg font-heading font-semibold text-white">{plan.name}</div>
+                  <div className="text-lg font-heading font-semibold text-text-primary">
+                    {plan.name}
+                  </div>
                   <div className="mt-2 flex items-baseline gap-1">
                     <span className="text-3xl font-heading font-bold">{plan.price}</span>
-                    <span className="text-xs text-white/60">{plan.period}</span>
+                    <span className="text-xs text-text-muted">{plan.period}</span>
                   </div>
                 </div>
-                <ul className="flex-1 space-y-2 text-sm text-white/80 mt-2">
+                <ul className="flex-1 space-y-2 text-sm text-text-muted mt-2">
                   {plan.features.map((f) => (
                     <li key={f} className="flex items-center gap-2">
                       <Check size={14} className="text-emerald-400" />
