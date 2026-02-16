@@ -17,7 +17,9 @@ for (let i = 1; i <= rounds; i += 1) {
   runScript('Endpoints Test', 'node', ['./tests/endpoints.test.js']);
   runScript('Controllers Test', 'node', ['./tests/controllers.test.js']);
   runScript('AI Flow Test', 'node', ['./tests/ai-flow.test.js']);
+  runScript('Auto-Reply Execution Test', 'node', ['./tests/auto-reply-execution.test.js']);
   runScript('Login Flow Test', 'node', ['./tests/login-flow.test.js']);
+  runScript('Multi-Tenant Isolation Test', 'node', ['./tests/multi-tenant-isolation.test.js']);
   runScript('Models Test', 'node', ['./tests/models.test.js']);
 }
 

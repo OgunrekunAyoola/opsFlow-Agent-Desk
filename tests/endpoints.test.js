@@ -79,6 +79,12 @@ async function run() {
   );
   if (upd.data.status !== 'triaged') throw new Error('update status failed');
 
+  // Metrics endpoint
+  const metrics = await axios.get(`${API_URL}/dashboard/metrics`, auth);
+  if (typeof metrics.data.totalTickets !== 'number') throw new Error('metrics totalTickets failed');
+  if (!metrics.data.series || typeof metrics.data.series !== 'object')
+    throw new Error('metrics series missing');
+
   // Run Workflow
   const wf = await axios.post(`${API_URL}/tickets/${ticketId}/workflows/triage`, {}, auth);
   if (wf.data.run?.status !== 'succeeded') throw new Error('workflow failed');

@@ -7,7 +7,7 @@ export interface ITicket extends Document {
   body: string;
   messageId?: string;
   channel: 'email' | 'web_form';
-  status: 'new' | 'triaged' | 'awaiting_reply' | 'replied' | 'closed';
+  status: 'new' | 'triaged' | 'awaiting_reply' | 'replied' | 'closed' | 'auto_resolved';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   category: 'bug' | 'feature_request' | 'billing' | 'general' | 'other';
   customerName?: string;
@@ -36,7 +36,7 @@ const TicketSchema: Schema = new Schema(
     channel: { type: String, enum: ['email', 'web_form'], required: true },
     status: {
       type: String,
-      enum: ['new', 'triaged', 'awaiting_reply', 'replied', 'closed'],
+      enum: ['new', 'triaged', 'awaiting_reply', 'replied', 'closed', 'auto_resolved'],
       default: 'new',
       index: true,
     },

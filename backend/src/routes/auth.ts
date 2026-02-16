@@ -10,7 +10,7 @@ import {
 } from '../auth/jwt';
 import Tenant from '../models/Tenant';
 import User from '../models/User';
-import { requireAuth } from '../middleware/auth';
+import { requireAuth, requireAdmin } from '../middleware/auth';
 import UserAction from '../models/UserAction';
 import { EmailService } from '../services/EmailService';
 
@@ -362,7 +362,47 @@ router.get('/me', requireAuth, async (req, res) => {
       role: user?.role,
       isEmailVerified: user?.isEmailVerified,
     },
-    tenant: { id: tenant?._id, name: tenant?.name, inboundAddress: tenant?.inboundAddress },
+    tenant: {
+      id: tenant?._id,
+      name: tenant?.name,
+      inboundAddress: tenant?.inboundAddress,
+      autoReplyEnabled: tenant?.autoReplyEnabled,
+      autoReplyConfidenceThreshold: tenant?.autoReplyConfidenceThreshold,
+      autoReplySafeCategories: tenant?.autoReplySafeCategories,
+    },
+  });
+});
+
+router.patch('/auto-reply-settings', requireAuth, requireAdmin, async (req, res) => {
+  const ctx = (req as any).currentUser;
+  const { enabled, confidenceThreshold, safeCategories } = req.body || {};
+
+  const update: any = {};
+  if (typeof enabled === 'boolean') {
+    update.autoReplyEnabled = enabled;
+  }
+  if (typeof confidenceThreshold === 'number') {
+    const c = Math.max(0.5, Math.min(confidenceThreshold, 1));
+    update.autoReplyConfidenceThreshold = c;
+  }
+  if (Array.isArray(safeCategories)) {
+    update.autoReplySafeCategories = safeCategories
+      .filter((v) => typeof v === 'string')
+      .map((v) => v.toLowerCase());
+  }
+
+  const tenant = await Tenant.findOneAndUpdate(
+    { _id: ctx.tenantId },
+    { $set: update },
+    { new: true },
+  ).exec();
+
+  if (!tenant) return res.status(404).json({ error: 'not_found' });
+
+  res.json({
+    autoReplyEnabled: tenant.autoReplyEnabled,
+    autoReplyConfidenceThreshold: tenant.autoReplyConfidenceThreshold,
+    autoReplySafeCategories: tenant.autoReplySafeCategories,
   });
 });
 

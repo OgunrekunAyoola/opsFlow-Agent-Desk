@@ -4,6 +4,9 @@ import User from '../models/User';
 import WorkflowRun from '../models/WorkflowRun';
 import WorkflowStep from '../models/WorkflowStep';
 import TicketReply from '../models/TicketReply';
+import Tenant from '../models/Tenant';
+import UserAction from '../models/UserAction';
+import { emailSendQueue } from '../queue/index';
 import { GeminiLLMService } from './GeminiLLMService';
 
 interface RunOptions {
@@ -131,6 +134,11 @@ export class TicketTriageWorkflow {
         replyResult,
       );
 
+      const confidence =
+        typeof (replyResult as any).confidence === 'number'
+          ? (replyResult as any).confidence
+          : this.computeConfidence(categoryResult.category, priorityResult.priority);
+
       // 7. Persist Changes
 
       // Update Ticket
@@ -151,7 +159,10 @@ export class TicketTriageWorkflow {
         suggestedReply: this.sanitizeReply(replyResult.replyBody),
         summary: `AI Triage: Classified as ${categoryResult.category} with ${priorityResult.priority} priority.`,
         sentiment: 'neutral',
+        priorityScore: confidence,
       };
+
+      const tenant = await Tenant.findById(tenantId).exec();
 
       await ticket.save();
 
@@ -162,6 +173,46 @@ export class TicketTriageWorkflow {
         authorType: 'ai',
         body: this.sanitizeReply(replyResult.replyBody),
       });
+
+      const shouldAttemptAutoReply =
+        tenant?.autoReplyEnabled &&
+        typeof tenant.autoReplyConfidenceThreshold === 'number' &&
+        confidence >= tenant.autoReplyConfidenceThreshold &&
+        Array.isArray(tenant.autoReplySafeCategories) &&
+        tenant.autoReplySafeCategories.includes(categoryResult.category) &&
+        !!ticket.customerEmail;
+
+      if (shouldAttemptAutoReply) {
+        aiReply.deliveryStatus = 'queued';
+        await aiReply.save();
+        await emailSendQueue.add('send', {
+          replyId: aiReply._id.toString(),
+          to: ticket.customerEmail,
+          subject: `Re: ${ticket.subject}`,
+          body: aiReply.body,
+        });
+        if (ticket.status !== 'closed') {
+          ticket.status = 'auto_resolved' as any;
+          await ticket.save();
+        }
+        try {
+          await UserAction.create({
+            tenantId: new mongoose.Types.ObjectId(tenantId),
+            userId: new mongoose.Types.ObjectId(startedByUserId),
+            type: 'auto_reply_sent',
+            subjectId: aiReply._id,
+            meta: {
+              ticketId,
+              category: categoryResult.category,
+              priority: priorityResult.priority,
+              confidence,
+            },
+          });
+        } catch {}
+      } else if (ticket.status !== 'closed') {
+        ticket.status = 'awaiting_reply' as any;
+        await ticket.save();
+      }
 
       // Complete Run
       run.status = 'succeeded';
@@ -246,12 +297,15 @@ export class TicketTriageWorkflow {
     return { replyBody: body };
   }
 
+  private computeConfidence(category: string, priority: string) {
+    if (category === 'billing') return 0.6;
+    if (priority === 'urgent' || priority === 'high') return 0.9;
+    if (priority === 'medium') return 0.8;
+    return 0.75;
+  }
+
   private sanitizeReply(text: string) {
-    const patterns = [
-      /credit\s*card\s*number/gi,
-      /password/gi,
-      /ssn|social\s*security\s*number/gi,
-    ];
+    const patterns = [/credit\s*card\s*number/gi, /password/gi, /ssn|social\s*security\s*number/gi];
     let safe = text;
     patterns.forEach((p) => {
       safe = safe.replace(p, '[redacted]');
