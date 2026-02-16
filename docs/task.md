@@ -184,16 +184,6 @@
 - Test with: Gmail, Outlook, Apple Mail formats
 - Handle edge cases: no subject, no body, spam, large attachments
 
-### Task 1.12: Add Attachment Support for Tickets 🎯 P2
-
-- Allow customers to attach files in emails (images, PDFs, logs)
-- Store attachments in cloud storage (AWS S3 or Cloudinary)
-- Display attachments in ticket detail page with download links
-- File size limit: 10MB per file, 25MB total per ticket
-- Supported formats: jpg, png, pdf, txt, docx, xlsx, csv
-- Virus scan attachments before storing (use ClamAV or similar)
-- Test: Email with PDF attachment, verify stored and downloadable
-
 ### Task 1.14: Add Bulk Actions for Tickets 💎 P3
 
 - Checkbox selection on ticket list

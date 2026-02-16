@@ -100,8 +100,11 @@ export function TicketDetail() {
     if (!ticket) return;
     try {
       setIsSavingProps(true);
-      const payload: any = { priority: editPriority, category: editCategory };
-      if (editAssignee) payload.assigneeId = editAssignee;
+      const payload: any = {
+        priority: editPriority,
+        category: editCategory,
+        assigneeId: editAssignee || null,
+      };
       const res = await api.patch(`/tickets/${ticket._id}`, payload);
       setTicket(res.data);
       toast.success('Ticket updated');

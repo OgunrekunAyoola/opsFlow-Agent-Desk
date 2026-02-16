@@ -8,6 +8,7 @@ export interface ITenant extends Document {
   autoReplyEnabled?: boolean;
   autoReplyConfidenceThreshold?: number;
   autoReplySafeCategories?: string[];
+  lastInboundAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -24,6 +25,7 @@ const TenantSchema: Schema = new Schema(
       type: [String],
       default: ['general', 'feature_request'],
     },
+    lastInboundAt: { type: Date },
   },
   { timestamps: true },
 );

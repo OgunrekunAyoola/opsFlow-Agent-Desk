@@ -9,6 +9,10 @@ import { emailSendQueue } from '../queue/index';
 import UserAction from '../models/UserAction';
 
 const router = Router();
+const frontendBaseUrl = (process.env.FRONTEND_BASE_URL || 'http://localhost:5173').replace(
+  /\/+$/,
+  '',
+);
 
 // List tickets
 router.get('/', requireAuth, async (req, res) => {
@@ -25,7 +29,11 @@ router.get('/', requireAuth, async (req, res) => {
   const query: any = { tenantId };
   if (status) query.status = status;
   if (priority) query.priority = priority;
-  if (assigneeId) query.assigneeId = assigneeId;
+  if (assigneeId === 'unassigned') {
+    query.assigneeId = null;
+  } else if (assigneeId) {
+    query.assigneeId = assigneeId;
+  }
   if (search && typeof search === 'string' && search.trim().length > 0) {
     const s = search.trim();
     query.$or = [
@@ -78,6 +86,7 @@ router.post('/', requireAuth, async (req, res) => {
     channel: 'web_form', // Default for internal creation
     customerName,
     customerEmail,
+    assigneeId: null,
     priority: priority || 'medium',
     category: category || 'general',
     status: 'new',
@@ -111,6 +120,7 @@ router.post('/ingest/email', requireAuth, async (req, res) => {
     messageId,
     channel: 'email',
     customerEmail: from,
+    assigneeId: null,
     status: 'new',
     priority: 'medium',
     category: 'general',
@@ -200,7 +210,6 @@ router.patch('/:id', requireAuth, async (req, res) => {
   const { id } = req.params;
   const updates = req.body;
 
-  // Whitelist allowed updates
   const allowedUpdates = ['status', 'priority', 'category', 'assigneeId'];
   const safeUpdates: any = {};
 
@@ -210,14 +219,42 @@ router.patch('/:id', requireAuth, async (req, res) => {
     }
   });
 
-  const ticket = await Ticket.findOneAndUpdate(
-    { _id: id, tenantId },
-    { $set: safeUpdates },
-    { new: true },
-  ).populate('assigneeId', 'name email');
-
-  if (!ticket) {
+  const existing = await Ticket.findOne({ _id: id, tenantId }).exec();
+  if (!existing) {
     return res.status(404).json({ error: 'Ticket not found' });
+  }
+
+  const previousAssigneeId = existing.assigneeId ? existing.assigneeId.toString() : null;
+
+  Object.assign(existing, safeUpdates);
+  const ticket = await existing.save();
+  await ticket.populate('assigneeId', 'name email');
+
+  const currentAssignee: any = ticket.assigneeId;
+  const newAssigneeId =
+    currentAssignee && currentAssignee._id
+      ? currentAssignee._id.toString()
+      : currentAssignee
+        ? currentAssignee.toString()
+        : null;
+
+  if (previousAssigneeId !== newAssigneeId && newAssigneeId) {
+    try {
+      const email = currentAssignee?.email;
+      const name = currentAssignee?.name || 'there';
+
+      if (email) {
+        const emailService = new EmailService();
+        const shortId = ticket._id.toString().slice(-6);
+        const subject = `You've been assigned ticket #${shortId}`;
+        const ticketUrl = `${frontendBaseUrl}/tickets/${ticket._id.toString()}`;
+        const text = `Hi ${name},\n\nYou've been assigned ticket #${shortId}.\n\nSubject: ${ticket.subject}\n\nView the ticket: ${ticketUrl}\n`;
+        const html = `<p>Hi ${name},</p><p>You've been assigned ticket #${shortId}.</p><p><strong>Subject:</strong> ${ticket.subject}</p><p><a href="${ticketUrl}">View ticket in OpsFlow</a></p>`;
+        await emailService.send({ to: email, subject, text, html });
+      }
+    } catch (err) {
+      console.error('Failed to send assignment email', err);
+    }
   }
 
   res.json(ticket);

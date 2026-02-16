@@ -99,6 +99,10 @@ async function run() {
   });
   if (!inbound.data.ticket?._id) throw new Error('inbound failed');
 
+  const meAfterInbound = await axios.get(`${API_URL}/auth/me`, auth);
+  if (!meAfterInbound.data.tenant?.lastInboundAt)
+    throw new Error('lastInboundAt not set after inbound');
+
   // Delivery events (expect 404 without secret/id)
   try {
     await axios.post(`${API_URL}/email/events`, { type: 'email.sent' });

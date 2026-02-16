@@ -369,6 +369,7 @@ router.get('/me', requireAuth, async (req, res) => {
       autoReplyEnabled: tenant?.autoReplyEnabled,
       autoReplyConfidenceThreshold: tenant?.autoReplyConfidenceThreshold,
       autoReplySafeCategories: tenant?.autoReplySafeCategories,
+      lastInboundAt: tenant?.lastInboundAt,
     },
   });
 });

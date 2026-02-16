@@ -66,6 +66,9 @@ router.post('/inbound', async (req, res) => {
     if (client) clientId = client._id;
   }
 
+  tenant.lastInboundAt = new Date();
+  await tenant.save();
+
   const ticket = await Ticket.create({
     tenantId: tenant._id,
     clientId,

@@ -5,9 +5,11 @@ import { requireAuth, requireAdmin } from '../middleware/auth';
 
 const router = Router();
 
-router.get('/', requireAuth, requireAdmin, async (req, res) => {
+router.get('/', requireAuth, async (req, res) => {
   const ctx = (req as any).currentUser;
-  const users = await User.find({ tenantId: ctx.tenantId }).select('name email role createdAt updatedAt').exec();
+  const users = await User.find({ tenantId: ctx.tenantId })
+    .select('name email role createdAt updatedAt')
+    .exec();
   res.json({ users });
 });
 

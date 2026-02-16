@@ -13,6 +13,7 @@ import { MetricsDashboard } from './pages/MetricsDashboard';
 import { Team } from './pages/Team';
 import { Clients } from './pages/Clients';
 import { Settings } from './pages/Settings';
+import { EmailSettings } from './pages/EmailSettings';
 import { Profile } from './pages/Profile';
 import { Pricing } from './pages/Pricing';
 import { Docs } from './pages/Docs';
@@ -90,6 +91,7 @@ function App() {
           <Route path="team" element={<Team />} />
           <Route path="clients" element={<Clients />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="settings/email" element={<EmailSettings />} />
           <Route path="profile" element={<Profile />} />
         </Route>
         <Route path="*" element={<NotFound />} />

@@ -7,17 +7,20 @@ import api from '../lib/api';
 import { Button } from '../components/ui/Button';
 import { Plus } from 'lucide-react';
 
-const FILTERS = ['All', 'New', 'Triaged', 'Awaiting Reply', 'Replied', 'Closed'];
+const FILTERS = ['All', 'Unassigned', 'New', 'Triaged', 'Awaiting Reply', 'Replied', 'Closed'];
 
 export function Tickets() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialStatus = (searchParams.get('status') || '').toLowerCase();
+  const initialQueue = searchParams.get('queue');
   const [activeFilter, setActiveFilter] = useState(
-    initialStatus
-      ? initialStatus === 'awaiting_reply'
-        ? 'Awaiting Reply'
-        : initialStatus.charAt(0).toUpperCase() + initialStatus.slice(1)
-      : 'All',
+    initialQueue === 'unassigned'
+      ? 'Unassigned'
+      : initialStatus
+        ? initialStatus === 'awaiting_reply'
+          ? 'Awaiting Reply'
+          : initialStatus.charAt(0).toUpperCase() + initialStatus.slice(1)
+        : 'All',
   );
   const [tickets, setTickets] = useState<TicketProps[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -26,12 +29,21 @@ export function Tickets() {
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
   const [total, setTotal] = useState(0);
+  const [assignedToMe, setAssignedToMe] = useState(searchParams.get('mine') === 'true');
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const fetchTickets = async () => {
     try {
       setIsLoading(true);
       const params: any = { page, pageSize };
-      if (activeFilter !== 'All') params.status = activeFilter.toLowerCase();
+      if (assignedToMe && currentUserId) {
+        params.assigneeId = currentUserId;
+      } else if (activeFilter === 'Unassigned') {
+        params.assigneeId = 'unassigned';
+      } else if (activeFilter !== 'All') {
+        params.status =
+          activeFilter === 'Awaiting Reply' ? 'awaiting_reply' : activeFilter.toLowerCase();
+      }
       const qpPriority = searchParams.get('priority');
       if (qpPriority) params.priority = qpPriority;
       if (search.trim()) params.search = search.trim();
@@ -63,7 +75,20 @@ export function Tickets() {
   useEffect(() => {
     fetchTickets();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeFilter, search, page, searchParams]);
+  }, [activeFilter, search, page, searchParams, assignedToMe, currentUserId]);
+
+  useEffect(() => {
+    const loadMe = async () => {
+      try {
+        const res = await api.get('/auth/me');
+        const id = res.data?.user?.id || res.data?.user?._id || null;
+        setCurrentUserId(id);
+      } catch {
+        setCurrentUserId(null);
+      }
+    };
+    loadMe();
+  }, []);
 
   const totalPages = Math.max(Math.ceil(total / pageSize), 1);
 
@@ -76,15 +101,25 @@ export function Tickets() {
               key={filter}
               onClick={() => {
                 setActiveFilter(filter);
-                const statusParam =
-                  filter === 'All'
-                    ? null
-                    : filter === 'Awaiting Reply'
-                      ? 'awaiting_reply'
-                      : filter.toLowerCase();
                 const next = new URLSearchParams(searchParams);
+                let statusParam: string | null = null;
+                let queueParam: string | null = null;
+
+                if (filter === 'All') {
+                  statusParam = null;
+                  queueParam = null;
+                } else if (filter === 'Unassigned') {
+                  queueParam = 'unassigned';
+                } else if (filter === 'Awaiting Reply') {
+                  statusParam = 'awaiting_reply';
+                } else {
+                  statusParam = filter.toLowerCase();
+                }
+
                 if (statusParam) next.set('status', statusParam);
                 else next.delete('status');
+                if (queueParam) next.set('queue', queueParam);
+                else next.delete('queue');
                 next.delete('priority');
                 setSearchParams(next);
                 setPage(1);
@@ -111,6 +146,21 @@ export function Tickets() {
             placeholder="Search tickets..."
             className="hidden md:block w-64 rounded-full border border-slate-200 px-3 py-2 focus:ring-2 focus:ring-accent-primary focus:border-transparent outline-none"
           />
+          <Button
+            size="sm"
+            variant={assignedToMe ? 'primary' : 'secondary'}
+            onClick={() => {
+              const nextValue = !assignedToMe;
+              const next = new URLSearchParams(searchParams);
+              if (nextValue) next.set('mine', 'true');
+              else next.delete('mine');
+              setSearchParams(next);
+              setAssignedToMe(nextValue);
+              setPage(1);
+            }}
+          >
+            Assigned to me
+          </Button>
           <Button onClick={() => setIsCreateModalOpen(true)} size="sm">
             <Plus size={16} className="mr-2" /> New Ticket
           </Button>
