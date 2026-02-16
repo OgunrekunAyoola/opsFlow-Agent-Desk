@@ -39,6 +39,7 @@ export function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setIsLoading(true);
         const [statsRes, userRes] = await Promise.all([
           api.get('/dashboard/stats'),
           api.get('/auth/me'),
@@ -73,33 +74,43 @@ export function Dashboard() {
     }
   };
 
-  if (isLoading) {
-    return <div className="p-8">Loading dashboard...</div>;
-  }
+  const showSkeleton = isLoading && !stats && !error;
 
-  if (error) {
+  if (error && !isLoading && !stats) {
     return (
-      <div className="p-8 space-y-4">
-        <div className="text-red-500 font-medium">Failed to load dashboard data: {error}</div>
-        <button
-          onClick={() => window.location.reload()}
-          className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
-        >
-          Retry
-        </button>
+      <div className="min-h-[60vh] flex items-center justify-center p-6">
+        <div className="max-w-md w-full glass-panel rounded-2xl p-6 text-center">
+          <h2 className="text-lg font-heading font-bold text-text-primary mb-2">
+            We couldn't load your dashboard
+          </h2>
+          <p className="text-sm text-text-muted mb-4">{error}</p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-grad-main text-white text-sm font-medium shadow hover:shadow-md transition-shadow"
+          >
+            Try again
+          </button>
+        </div>
       </div>
     );
   }
 
-  if (!stats) {
-    return <div className="p-8">No dashboard data available.</div>;
+  if (!stats && !isLoading) {
+    return (
+      <div className="p-8 text-sm text-text-muted">
+        No dashboard data available yet. Create your first ticket to see insights here.
+      </div>
+    );
   }
 
   const openTickets =
-    (stats.byStatus['new'] || 0) +
-    (stats.byStatus['triaged'] || 0) +
-    (stats.byStatus['awaiting_reply'] || 0);
-  const urgentTickets = stats.byPriority['urgent'] || 0;
+    (stats?.byStatus['new'] || 0) +
+    (stats?.byStatus['triaged'] || 0) +
+    (stats?.byStatus['awaiting_reply'] || 0);
+  const urgentTickets = stats?.byPriority['urgent'] || 0;
+  const recentTickets = stats?.recentTickets || [];
+  const statusEntries = Object.entries(stats?.byStatus || {});
 
   return (
     <div className="space-y-6">
@@ -132,34 +143,54 @@ export function Dashboard() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Total Tickets"
-          value={stats.totalTickets}
-          icon={Ticket}
-          color="bg-blue-500"
-          href="/tickets"
-        />
-        <StatCard
-          title="Open Issues"
-          value={openTickets}
-          icon={Clock}
-          color="bg-yellow-500"
-          href="/tickets?status=new"
-        />
-        <StatCard
-          title="Urgent"
-          value={urgentTickets}
-          icon={AlertTriangle}
-          color="bg-red-500"
-          href="/tickets?priority=urgent"
-        />
-        <StatCard
-          title="Team Members"
-          value={stats.totalUsers}
-          icon={Users}
-          color="bg-purple-500"
-          href="/team"
-        />
+        {showSkeleton ? (
+          Array.from({ length: 4 }).map((_, idx) => (
+            <div
+              key={idx}
+              className="glass-panel rounded-2xl p-5 animate-pulse bg-white/60 border border-slate-100"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-11 h-11 rounded-xl bg-slate-100" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3 w-24 bg-slate-100 rounded" />
+                  <div className="h-5 w-16 bg-slate-100 rounded" />
+                  <div className="h-3 w-20 bg-slate-100 rounded" />
+                </div>
+              </div>
+            </div>
+          ))
+        ) : (
+          <>
+            <StatCard
+              title="Total Tickets"
+              value={stats?.totalTickets || 0}
+              icon={Ticket}
+              color="bg-blue-500"
+              href="/tickets"
+            />
+            <StatCard
+              title="Open Issues"
+              value={openTickets}
+              icon={Clock}
+              color="bg-yellow-500"
+              href="/tickets?status=new"
+            />
+            <StatCard
+              title="Urgent"
+              value={urgentTickets}
+              icon={AlertTriangle}
+              color="bg-red-500"
+              href="/tickets?priority=urgent"
+            />
+            <StatCard
+              title="Team Members"
+              value={stats?.totalUsers || 0}
+              icon={Users}
+              color="bg-purple-500"
+              href="/team"
+            />
+          </>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -167,10 +198,10 @@ export function Dashboard() {
         <div className="lg:col-span-2 glass-panel rounded-2xl p-6">
           <h3 className="font-heading font-bold text-lg mb-4">Recent Tickets</h3>
           <div className="space-y-4">
-            {stats.recentTickets.length === 0 ? (
+            {recentTickets.length === 0 ? (
               <p className="text-text-muted text-sm">No recent tickets found.</p>
             ) : (
-              stats.recentTickets.map((ticket) => (
+              recentTickets.map((ticket) => (
                 <Link
                   key={ticket._id}
                   to={`/tickets/${ticket._id}`}
@@ -216,7 +247,7 @@ export function Dashboard() {
         <div className="glass-panel rounded-2xl p-6">
           <h3 className="font-heading font-bold text-lg mb-4">Status Breakdown</h3>
           <div className="space-y-3">
-            {Object.entries(stats.byStatus).map(([status, count]) => (
+            {statusEntries.map(([status, count]) => (
               <Link
                 key={status}
                 to={`/tickets?status=${status}`}

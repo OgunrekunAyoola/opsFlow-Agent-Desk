@@ -33,11 +33,13 @@ export function TicketDetail() {
   const [users, setUsers] = useState<any[]>([]);
   const [editAssignee, setEditAssignee] = useState<string>('');
   const [isSavingProps, setIsSavingProps] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const toast = useToast();
 
   const fetchTicket = async () => {
     try {
       setIsLoading(true);
+      setLoadError(null);
       const res = await api.get(`/tickets/${id}`);
       setTicket(res.data);
       setEditPriority((res.data.priority || 'low') as any);
@@ -46,7 +48,9 @@ export function TicketDetail() {
     } catch (err: any) {
       if (err.response?.status === 401) return;
       console.error(err);
-      toast.error('Failed to load ticket details');
+      const msg = err.response?.data?.error || 'Failed to load ticket details';
+      setLoadError(msg);
+      toast.error(msg);
     } finally {
       setIsLoading(false);
     }
@@ -105,8 +109,37 @@ export function TicketDetail() {
     }
   };
 
-  if (isLoading) {
-    return <div className="p-8 text-center text-text-muted">Loading ticket...</div>;
+  if (isLoading && !ticket) {
+    return (
+      <div className="p-8 max-w-4xl mx-auto space-y-4">
+        <div className="h-6 w-40 bg-slate-100 rounded animate-pulse" />
+        <div className="glass-panel rounded-2xl p-6 space-y-4 animate-pulse">
+          <div className="h-5 w-3/4 bg-slate-100 rounded" />
+          <div className="h-4 w-1/2 bg-slate-100 rounded" />
+          <div className="h-32 w-full bg-slate-100 rounded-xl" />
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError && !ticket) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center p-6">
+        <div className="max-w-md w-full glass-panel rounded-2xl p-6 text-center">
+          <h2 className="text-lg font-heading font-bold text-text-primary mb-2">
+            We couldn't load this ticket
+          </h2>
+          <p className="text-sm text-text-muted mb-4">{loadError}</p>
+          <button
+            type="button"
+            onClick={fetchTicket}
+            className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-grad-main text-white text-sm font-medium shadow hover:shadow-md transition-shadow"
+          >
+            Try again
+          </button>
+        </div>
+      </div>
+    );
   }
 
   if (!ticket) {

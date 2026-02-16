@@ -1,9 +1,10 @@
-import { LayoutDashboard, Ticket, Users, Settings, Bot, Building2 } from 'lucide-react';
+import { LayoutDashboard, Ticket, Users, Settings, Bot, Building2, BarChart3 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
+  { icon: BarChart3, label: 'Metrics', href: '/dashboard/metrics' },
   { icon: Ticket, label: 'Tickets', href: '/tickets' },
   { icon: Building2, label: 'Clients', href: '/clients' },
   { icon: Users, label: 'Team', href: '/team' },

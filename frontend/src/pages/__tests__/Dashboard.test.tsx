@@ -25,16 +25,6 @@ function renderDashboard() {
 }
 
 describe('Dashboard page', () => {
-  it('shows loading state initially', () => {
-    apiMock.get.mockResolvedValue({
-      data: {},
-    });
-
-    renderDashboard();
-
-    expect(screen.getByText(/loading dashboard/i)).toBeInTheDocument();
-  });
-
   it('renders stats and verification banner for unverified user', async () => {
     apiMock.get.mockImplementation((url: string) => {
       if (url === '/dashboard/stats') {
@@ -79,5 +69,33 @@ describe('Dashboard page', () => {
         email: 'user@example.com',
       });
     });
+  });
+
+  it('shows friendly error UI when stats request fails', async () => {
+    apiMock.get.mockImplementation((url: string) => {
+      if (url === '/dashboard/stats') {
+        return Promise.reject({
+          response: { status: 500, data: { error: 'Internal server error' } },
+        });
+      }
+      if (url === '/auth/me') {
+        return Promise.resolve({
+          data: {
+            user: {
+              email: 'user@example.com',
+              isEmailVerified: true,
+            },
+          },
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    renderDashboard();
+
+    await waitFor(() => {
+      expect(screen.getByText(/we couldn't load your dashboard/i)).toBeInTheDocument();
+    });
+    expect(screen.getByText(/internal server error/i)).toBeInTheDocument();
   });
 });

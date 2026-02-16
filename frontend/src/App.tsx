@@ -9,6 +9,7 @@ import { ResetPassword } from './pages/ResetPassword';
 import { Tickets } from './pages/Tickets';
 import { TicketDetail } from './pages/TicketDetail';
 import { Dashboard } from './pages/Dashboard';
+import { MetricsDashboard } from './pages/MetricsDashboard';
 import { Team } from './pages/Team';
 import { Clients } from './pages/Clients';
 import { Settings } from './pages/Settings';
@@ -24,8 +25,10 @@ function RouteLoader() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    setVisible(true);
-    setProgress(20);
+    const start = window.setTimeout(() => {
+      setVisible(true);
+      setProgress(20);
+    }, 0);
     const step1 = window.setTimeout(() => setProgress(60), 80);
     const step2 = window.setTimeout(() => setProgress(90), 200);
     const step3 = window.setTimeout(() => {
@@ -36,6 +39,7 @@ function RouteLoader() {
       }, 200);
     }, 400);
     return () => {
+      window.clearTimeout(start);
       window.clearTimeout(step1);
       window.clearTimeout(step2);
       window.clearTimeout(step3);
@@ -80,6 +84,7 @@ function App() {
 
         <Route element={<RequireAuth />}>
           <Route path="dashboard" element={<Dashboard />} />
+          <Route path="dashboard/metrics" element={<MetricsDashboard />} />
           <Route path="tickets" element={<Tickets />} />
           <Route path="tickets/:id" element={<TicketDetail />} />
           <Route path="team" element={<Team />} />
