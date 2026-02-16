@@ -19,6 +19,10 @@ interface TicketDetailProps {
   createdAt: string;
   replies: any[];
   aiAnalysis?: any;
+  aiDraft?: {
+    body?: string;
+    confidence?: number;
+  };
   isAiTriaged?: boolean;
 }
 
@@ -303,6 +307,7 @@ export function TicketDetail() {
             onAnalysisComplete={fetchTicket}
             onApproveReply={handleReply}
             analysis={ticket.aiAnalysis}
+            aiDraft={ticket.aiDraft}
             isTriaged={!!ticket.isAiTriaged}
             customerEmail={ticket.customerEmail}
             currentPriority={ticket.priority as any}

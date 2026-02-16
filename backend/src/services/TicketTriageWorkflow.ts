@@ -153,6 +153,11 @@ export class TicketTriageWorkflow {
 
       ticket.isAiTriaged = true;
 
+      ticket.aiDraft = {
+        body: this.sanitizeReply(replyResult.replyBody),
+        confidence,
+      };
+
       // Update aiAnalysis for backward compatibility / quick access
       ticket.aiAnalysis = {
         suggestedCategory: categoryResult.category,

@@ -14,6 +14,10 @@ export interface ITicket extends Document {
   customerEmail?: string;
   assigneeId?: mongoose.Types.ObjectId;
   createdById?: mongoose.Types.ObjectId;
+  aiDraft?: {
+    body?: string;
+    confidence?: number;
+  };
   aiAnalysis?: {
     sentiment?: 'positive' | 'neutral' | 'negative';
     priorityScore?: number;
@@ -50,6 +54,10 @@ const TicketSchema: Schema = new Schema(
     customerEmail: { type: String },
     assigneeId: { type: Schema.Types.ObjectId, ref: 'User' },
     createdById: { type: Schema.Types.ObjectId, ref: 'User' },
+    aiDraft: {
+      body: { type: String },
+      confidence: { type: Number },
+    },
     aiAnalysis: {
       sentiment: { type: String, enum: ['positive', 'neutral', 'negative'] },
       priorityScore: { type: Number },

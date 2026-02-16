@@ -258,24 +258,31 @@ function LineChartSimple({
   data: MetricsSeriesPoint[];
   valueKey: 'count' | 'minutes';
 }) {
-  if (!data || data.length === 0) {
-    return <div className="text-xs text-text-muted">No data yet.</div>;
-  }
+  const baseData =
+    data && data.length > 0
+      ? data
+      : [
+          { date: 'Day 1', [valueKey]: 0 },
+          { date: 'Day 2', [valueKey]: 0 },
+        ];
 
-  const values = data.map((d) => (d[valueKey] || 0) as number);
+  const normalized = baseData.map((d) => ({
+    ...d,
+    [valueKey]: (d[valueKey] || 0) as number,
+  }));
+
+  const values = normalized.map((d) => d[valueKey] as number);
   const max = Math.max(...values);
-  if (max <= 0) {
-    return <div className="text-xs text-text-muted">No data yet.</div>;
-  }
+  const safeMax = max <= 0 ? 1 : max;
 
   const width = 260;
   const height = 120;
-  const stepX = data.length > 1 ? width / (data.length - 1) : 0;
+  const stepX = normalized.length > 1 ? width / (normalized.length - 1) : 0;
 
-  const points = data.map((d, index) => {
+  const points = normalized.map((d, index) => {
     const x = index * stepX;
-    const v = (d[valueKey] || 0) as number;
-    const y = height - (v / max) * height;
+    const v = d[valueKey] as number;
+    const y = height - (v / safeMax) * height;
     return `${x},${y}`;
   });
 
@@ -297,10 +304,10 @@ function LineChartSimple({
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      {data.map((d, index) => {
+      {normalized.map((d, index) => {
         const x = index * stepX;
-        const v = (d[valueKey] || 0) as number;
-        const y = height - (v / max) * height;
+        const v = d[valueKey] as number;
+        const y = height - (v / safeMax) * height;
         return <circle key={d.date + index} cx={x} cy={y} r={3} fill="#3b82f6" />;
       })}
     </svg>
@@ -309,11 +316,11 @@ function LineChartSimple({
 
 function AiVsHumanChart({ ai, human }: { ai: number; human: number }) {
   const total = ai + human;
-  if (total === 0) {
-    return <div className="text-xs text-text-muted">No replies yet.</div>;
-  }
-  const aiPercent = Math.round((ai / total) * 100);
-  const humanPercent = 100 - aiPercent;
+  const aiSafe = ai || 0;
+  const humanSafe = human || 0;
+  const safeTotal = aiSafe + humanSafe;
+  const aiPercent = safeTotal > 0 ? Math.round((aiSafe / safeTotal) * 100) : 0;
+  const humanPercent = safeTotal > 0 ? 100 - aiPercent : 0;
 
   return (
     <div className="w-full">
@@ -330,23 +337,22 @@ function AiVsHumanChart({ ai, human }: { ai: number; human: number }) {
 }
 
 function BarSeriesChart({ data }: { data: { label: string; count: number }[] }) {
-  if (!data || data.length === 0) {
-    return <div className="text-xs text-text-muted">No data yet.</div>;
-  }
-  const max = Math.max(...data.map((d) => d.count));
-  if (max <= 0) {
-    return <div className="text-xs text-text-muted">No data yet.</div>;
-  }
+  const normalized = data && data.length > 0 ? data : [{ label: 'none', count: 0 }];
+  const max = Math.max(...normalized.map((d) => d.count));
+  const safeMax = max <= 0 ? 1 : max;
 
   return (
     <div className="w-full space-y-2">
-      {data.map((item) => (
+      {normalized.map((item) => (
         <div key={item.label} className="flex items-center gap-3">
           <div className="w-20 text-[11px] text-text-muted truncate capitalize">
             {item.label.replace('_', ' ')}
           </div>
           <div className="flex-1 h-2 rounded-full bg-slate-200 overflow-hidden">
-            <div className="h-full bg-blue-500" style={{ width: `${(item.count / max) * 100}%` }} />
+            <div
+              className="h-full bg-blue-500"
+              style={{ width: `${(item.count / safeMax) * 100}%` }}
+            />
           </div>
           <div className="w-8 text-right text-xs text-text-muted">{item.count}</div>
         </div>

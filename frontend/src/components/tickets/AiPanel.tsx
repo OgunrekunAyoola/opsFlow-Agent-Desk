@@ -17,6 +17,10 @@ interface AiPanelProps {
     summary?: string;
     suggestedReply?: string;
   };
+  aiDraft?: {
+    body?: string;
+    confidence?: number;
+  };
   isTriaged: boolean;
   customerEmail?: string;
   currentPriority?: 'low' | 'medium' | 'high' | 'urgent';
@@ -27,6 +31,7 @@ export function AiPanel({
   onAnalysisComplete,
   onApproveReply,
   analysis,
+  aiDraft,
   isTriaged,
   customerEmail,
   currentPriority,
@@ -209,20 +214,48 @@ export function AiPanel({
                   </div>
                 </div>
 
-                {/* Suggested Reply */}
+                {/* Suggested Reply + Confidence */}
                 <div className="bg-white/60 rounded-xl p-3 border border-slate-100 shadow-sm ring-1 ring-blue-500/20">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2 text-xs font-bold text-accent-primary uppercase tracking-wider">
                       <Bot size={12} /> Draft Reply
                     </div>
-                    <button
-                      className="p-1 hover:bg-slate-100 rounded text-text-muted"
-                      onClick={() => navigator.clipboard.writeText(analysis.suggestedReply || '')}
-                      title="Copy to clipboard"
-                    >
-                      <Edit3 size={12} />
-                    </button>
+                    <div className="flex items-center gap-2 text-[11px]">
+                      {typeof aiDraft?.confidence === 'number' && (
+                        <>
+                          <span className="text-text-muted">Confidence</span>
+                          <span className="font-semibold text-text-primary">
+                            {Math.round(aiDraft.confidence * 100)}%
+                          </span>
+                        </>
+                      )}
+                    </div>
                   </div>
+                  {typeof aiDraft?.confidence === 'number' && (
+                    <div className="mb-3 space-y-1">
+                      <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
+                        <div
+                          className={cn(
+                            'h-full rounded-full transition-all',
+                            aiDraft.confidence > 0.8
+                              ? 'bg-emerald-500'
+                              : aiDraft.confidence >= 0.6
+                                ? 'bg-amber-400'
+                                : 'bg-red-500',
+                          )}
+                          style={{
+                            width: `${Math.min(Math.max(aiDraft.confidence * 100, 0), 100)}%`,
+                          }}
+                        />
+                      </div>
+                      {aiDraft.confidence < 0.7 && (
+                        <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 inline-flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                          Low confidence - review recommended
+                        </p>
+                      )}
+                    </div>
+                  )}
                   <p className="text-xs text-text-primary bg-white p-2 rounded border border-slate-100 whitespace-pre-line max-h-40 overflow-y-auto">
                     {analysis.suggestedReply}
                   </p>
@@ -233,14 +266,39 @@ export function AiPanel({
                     </span>
                     .
                   </p>
-                  <Button
-                    size="sm"
-                    className="w-full"
-                    onClick={handleApprove}
-                    isLoading={isApproving}
-                  >
-                    <Check size={14} className="mr-2" /> Approve & Send
-                  </Button>
+                  <div className="flex flex-col gap-2 mt-2">
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      onClick={handleApprove}
+                      isLoading={isApproving}
+                      disabled={
+                        typeof aiDraft?.confidence === 'number' && aiDraft.confidence <= 0.8
+                      }
+                    >
+                      <Check size={14} className="mr-2" /> Send as-is
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="w-full"
+                      onClick={() => {
+                        if (analysis?.suggestedReply) {
+                          onApproveReply(analysis.suggestedReply);
+                        }
+                      }}
+                    >
+                      Edit and send
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="w-full text-xs"
+                      onClick={onAnalysisComplete}
+                    >
+                      Discard draft
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
