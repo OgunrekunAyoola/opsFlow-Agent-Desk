@@ -33,7 +33,7 @@ export interface ITicket extends Document {
 const TicketSchema: Schema = new Schema(
   {
     tenantId: { type: Schema.Types.ObjectId, ref: 'Tenant', required: true, index: true },
-    clientId: { type: Schema.Types.ObjectId, ref: 'Client' },
+    clientId: { type: Schema.Types.ObjectId, ref: 'Client', index: true },
     subject: { type: String, required: true },
     messageId: { type: String, index: true },
     body: { type: String, required: true },

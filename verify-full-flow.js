@@ -19,6 +19,8 @@ async function runTest() {
   let token = '';
   let ticketId = '';
   let tenantId = '';
+  let token2 = '';
+  let ticketId2 = '';
 
   console.log('🚀 Starting Full Flow Verification...\n');
 
@@ -191,6 +193,67 @@ async function runTest() {
   } catch (err) {
     console.log('❌ FAILED');
     console.error(err.response?.data || err.message);
+  }
+
+  try {
+    console.log('10. Creating second tenant and ticket... ');
+    const signup2 = await axios.post(`${API_URL}/auth/signup`, {
+      tenantName: 'Test Corp B',
+      name: 'Test Admin B',
+      email: `admin-b-${timestamp}@test.com`,
+      password: adminPassword,
+    });
+    token2 = signup2.data.access_token;
+    if (!token2) throw new Error('No token for second tenant');
+    const headers2 = { Authorization: `Bearer ${token2}` };
+    const create2 = await axios.post(
+      `${API_URL}/tickets`,
+      {
+        subject: 'Second tenant ticket',
+        body: 'Ticket for tenant B',
+        priority: 'high',
+        customerEmail: 'customer-b@example.com',
+        customerName: 'Customer B',
+        channel: 'email',
+        status: 'new',
+        category: 'general',
+      },
+      { headers: headers2 },
+    );
+    ticketId2 = create2.data._id;
+    if (!ticketId2) throw new Error('No ticket ID for second tenant');
+    const list2 = await axios.get(`${API_URL}/tickets`, { headers: headers2 });
+    if (!Array.isArray(list2.data.items) || list2.data.items.length !== 1)
+      throw new Error('Second tenant tickets count mismatch');
+    console.log('✅ OK');
+
+    console.log('11. Verifying cross-tenant access is blocked... ');
+    const list1 = await axios.get(`${API_URL}/tickets`, { headers });
+    if (!Array.isArray(list1.data.items) || list1.data.items.length !== 1)
+      throw new Error('First tenant tickets count mismatch');
+
+    let cross1Ok = false;
+    try {
+      await axios.get(`${API_URL}/tickets/${ticketId}`, { headers: headers2 });
+    } catch (err) {
+      if (err.response && err.response.status === 404) cross1Ok = true;
+      else throw err;
+    }
+    if (!cross1Ok) throw new Error('Second tenant can access first tenant ticket');
+
+    let cross2Ok = false;
+    try {
+      await axios.get(`${API_URL}/tickets/${ticketId2}`, { headers });
+    } catch (err) {
+      if (err.response && err.response.status === 404) cross2Ok = true;
+      else throw err;
+    }
+    if (!cross2Ok) throw new Error('First tenant can access second tenant ticket');
+    console.log('✅ OK');
+  } catch (err) {
+    console.log('❌ FAILED');
+    console.error(err.response?.data || err.message);
+    process.exit(1);
   }
 
   console.log('\n✨ All tests passed successfully!');
