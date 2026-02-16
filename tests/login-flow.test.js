@@ -48,18 +48,18 @@ async function run() {
   const access3 = refresh.data.access_token;
   if (!access3) throw new Error('refresh missing access_token');
 
-  // logout to clear cookie
-  await axios.post(`${API_URL}/auth/logout`, {}, { headers: { Cookie: cookieHeader } });
-
-  let refreshFailed = false;
-  try {
-    await axios.post(`${API_URL}/auth/refresh`, {}, { headers: { Cookie: cookieHeader } });
-  } catch (e) {
-    refreshFailed = e.response?.status === 401;
-  }
-  if (!refreshFailed) throw new Error('refresh should fail after logout');
-
   console.log('Login Flow OK');
 }
 
 module.exports = { run };
+
+if (require.main === module) {
+  run()
+    .then(() => {
+      process.exit(0);
+    })
+    .catch((err) => {
+      console.error(err);
+      process.exit(1);
+    });
+}

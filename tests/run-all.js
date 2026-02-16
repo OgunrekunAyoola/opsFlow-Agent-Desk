@@ -1,5 +1,4 @@
 const { spawnSync } = require('child_process');
-const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
 function runScript(name, cmd, args, opts = {}) {
   console.log(`\n=== ${name} ===`);
@@ -11,11 +10,15 @@ function runScript(name, cmd, args, opts = {}) {
   console.log(`${name} OK`);
 }
 
-// Run endpoints and controllers (JS, axios)
-runScript('Endpoints Test', 'node', ['./tests/endpoints.test.js']);
-runScript('Controllers Test', 'node', ['./tests/controllers.test.js']);
+const rounds = Math.max(parseInt(process.env.STRESS_ROUNDS || '1', 10), 1);
 
-// Run models test with ts-node/register from backend
-runScript('Models Test', 'node', ['./tests/models.test.js']);
+for (let i = 1; i <= rounds; i += 1) {
+  console.log(`\n=== ROUND ${i}/${rounds} ===`);
+  runScript('Endpoints Test', 'node', ['./tests/endpoints.test.js']);
+  runScript('Controllers Test', 'node', ['./tests/controllers.test.js']);
+  runScript('AI Flow Test', 'node', ['./tests/ai-flow.test.js']);
+  runScript('Login Flow Test', 'node', ['./tests/login-flow.test.js']);
+  runScript('Models Test', 'node', ['./tests/models.test.js']);
+}
 
-console.log('\nAll tests completed successfully.');
+console.log('\nAll rounds completed successfully.');

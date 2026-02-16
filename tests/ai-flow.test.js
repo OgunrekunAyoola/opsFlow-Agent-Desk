@@ -47,10 +47,23 @@ async function run() {
 
   // Verify workflow history exists
   const hist = await axios.get(`${API_URL}/tickets/${ticketId}/workflows`, auth);
-  if (!Array.isArray(hist.data) || hist.data.length < 1) throw new Error('workflow history missing');
-  if (!hist.data[0].steps || hist.data[0].steps.length < 1) throw new Error('workflow steps missing');
+  if (!Array.isArray(hist.data) || hist.data.length < 1)
+    throw new Error('workflow history missing');
+  if (!hist.data[0].steps || hist.data[0].steps.length < 1)
+    throw new Error('workflow steps missing');
 
   console.log('AI Flow OK');
 }
 
 module.exports = { run };
+
+if (require.main === module) {
+  run()
+    .then(() => {
+      process.exit(0);
+    })
+    .catch((err) => {
+      console.error(err);
+      process.exit(1);
+    });
+}

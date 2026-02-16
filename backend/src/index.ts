@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
+import jwt from 'jsonwebtoken';
 import { connectDB } from './db';
 import mongoose from 'mongoose';
 import authRouter from './routes/auth';
@@ -38,7 +39,29 @@ if (isReverseProxy) {
   app.set('trust proxy', 1);
 }
 
-const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200 });
+const defaultMax = isReverseProxy ? 1000 : 5000;
+const configuredMax = process.env.RATE_LIMIT_MAX ? parseInt(process.env.RATE_LIMIT_MAX, 10) : 0;
+const rateLimitMax =
+  Number.isFinite(configuredMax) && configuredMax > 0 ? configuredMax : defaultMax;
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: rateLimitMax,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    const auth = req.headers.authorization || '';
+    if (auth.startsWith('Bearer ')) {
+      const token = auth.slice(7);
+      try {
+        const payload: any = jwt.decode(token);
+        if (payload && typeof payload.sub === 'string') return `user:${payload.sub}`;
+      } catch {
+      }
+    }
+    const ip = req.ip || (req.connection as any)?.remoteAddress || '';
+    return `ip:${ip}`;
+  },
+});
 app.use(helmet());
 app.use(cookieParser());
 const frontendUrl = process.env.FRONTEND_URL;
