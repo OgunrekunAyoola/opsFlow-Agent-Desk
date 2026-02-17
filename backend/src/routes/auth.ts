@@ -366,6 +366,7 @@ router.get('/me', requireAuth, async (req, res) => {
       id: tenant?._id,
       name: tenant?.name,
       inboundAddress: tenant?.inboundAddress,
+      supportEmail: tenant?.supportEmail,
       autoReplyEnabled: tenant?.autoReplyEnabled,
       autoReplyConfidenceThreshold: tenant?.autoReplyConfidenceThreshold,
       autoReplySafeCategories: tenant?.autoReplySafeCategories,
@@ -404,6 +405,28 @@ router.patch('/auto-reply-settings', requireAuth, requireAdmin, async (req, res)
     autoReplyEnabled: tenant.autoReplyEnabled,
     autoReplyConfidenceThreshold: tenant.autoReplyConfidenceThreshold,
     autoReplySafeCategories: tenant.autoReplySafeCategories,
+  });
+});
+
+router.patch('/tenant-settings', requireAuth, requireAdmin, async (req, res) => {
+  const ctx = (req as any).currentUser;
+  const { supportEmail } = req.body || {};
+
+  const update: any = {};
+  if (typeof supportEmail === 'string') {
+    update.supportEmail = supportEmail.trim();
+  }
+
+  const tenant = await Tenant.findOneAndUpdate(
+    { _id: ctx.tenantId },
+    { $set: update },
+    { new: true },
+  ).exec();
+
+  if (!tenant) return res.status(404).json({ error: 'not_found' });
+
+  res.json({
+    supportEmail: tenant.supportEmail,
   });
 });
 

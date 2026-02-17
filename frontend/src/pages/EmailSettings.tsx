@@ -35,11 +35,13 @@ function formatLastEmailStatus(lastInboundAt?: string | null) {
 }
 
 export function EmailSettings() {
+  const [supportEmail, setSupportEmail] = useState<string>('');
   const [inboundAddress, setInboundAddress] = useState<string>('');
   const [lastInboundAt, setLastInboundAt] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSendingTest, setIsSendingTest] = useState(false);
+  const [isSavingSupportEmail, setIsSavingSupportEmail] = useState(false);
   const toast = useToast();
 
   useEffect(() => {
@@ -51,6 +53,9 @@ export function EmailSettings() {
         const tenant = res.data?.tenant;
         const addr = tenant?.inboundAddress || res.data?.inbound?.address || '';
         setInboundAddress(addr);
+        if (tenant?.supportEmail) {
+          setSupportEmail(tenant.supportEmail);
+        }
         if (tenant?.lastInboundAt) {
           setLastInboundAt(tenant.lastInboundAt);
         }
@@ -64,6 +69,25 @@ export function EmailSettings() {
     };
     load();
   }, []);
+
+  const handleSaveSupportEmail = async () => {
+    if (!supportEmail.trim()) {
+      toast.error('Support email is required');
+      return;
+    }
+    setIsSavingSupportEmail(true);
+    try {
+      await api.patch('/auth/tenant-settings', {
+        supportEmail: supportEmail.trim(),
+      });
+      toast.success('Support email saved');
+    } catch (err: any) {
+      const msg = err.response?.data?.error || 'Failed to save support email';
+      toast.error(msg);
+    } finally {
+      setIsSavingSupportEmail(false);
+    }
+  };
 
   const handleSendTestEmail = async () => {
     if (!inboundAddress) {
@@ -115,6 +139,24 @@ export function EmailSettings() {
         {!isLoading && !error && (
           <div className="space-y-6">
             <div className="space-y-2">
+              <h3 className="font-heading font-bold text-lg">Primary support email</h3>
+              <div className="text-sm text-text-muted">
+                This is the address your customers email today, for example support@agency.com.
+              </div>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <input
+                  type="email"
+                  value={supportEmail}
+                  onChange={(e) => setSupportEmail(e.target.value)}
+                  className="flex-1 px-4 py-2 rounded-xl bg-white border border-slate-200 text-text-primary"
+                  placeholder="support@agency.com"
+                />
+                <Button size="sm" onClick={handleSaveSupportEmail} isLoading={isSavingSupportEmail}>
+                  Save
+                </Button>
+              </div>
+            </div>
+            <div className="space-y-2">
               <h3 className="font-heading font-bold text-lg">Inbound email address</h3>
               <div className="text-sm text-text-muted">
                 Forward your support inbox to this address so every email becomes a ticket.
@@ -150,4 +192,3 @@ export function EmailSettings() {
     </div>
   );
 }
-
