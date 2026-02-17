@@ -313,10 +313,19 @@ function DocsHome(props: { search: string; onSearchChange: (value: string) => vo
         <h2 className="text-sm font-heading font-semibold text-slate-900">Quick links</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <Link
+            to="/docs/getting-started/what-is-opsflow"
+            className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700 hover:border-slate-300 hover:shadow-sm transition-shadow"
+          >
+            <div className="text-xs font-semibold text-indigo-500 mb-1">🤖 What is OpsFlow?</div>
+            <div className="text-xs text-slate-500">
+              Understand the platform, where it fits, and what it replaces.
+            </div>
+          </Link>
+          <Link
             to="/docs/getting-started/quick-start"
             className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700 hover:border-slate-300 hover:shadow-sm transition-shadow"
           >
-            <div className="text-xs font-semibold text-indigo-500 mb-1">🚀 Quick start</div>
+            <div className="text-xs font-semibold text-sky-500 mb-1">🚀 Quick start</div>
             <div className="text-xs text-slate-500">
               Create a workspace and wire your first tickets.
             </div>
@@ -325,17 +334,8 @@ function DocsHome(props: { search: string; onSearchChange: (value: string) => vo
             to="/docs/setup/email-forwarding"
             className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700 hover:border-slate-300 hover:shadow-sm transition-shadow"
           >
-            <div className="text-xs font-semibold text-sky-500 mb-1">📧 Email setup</div>
+            <div className="text-xs font-semibold text-emerald-500 mb-1">📧 Email setup</div>
             <div className="text-xs text-slate-500">Connect your support inbox to OpsFlow.</div>
-          </Link>
-          <Link
-            to="/docs/getting-started/core-concepts"
-            className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700 hover:border-slate-300 hover:shadow-sm transition-shadow"
-          >
-            <div className="text-xs font-semibold text-emerald-500 mb-1">📚 Core concepts</div>
-            <div className="text-xs text-slate-500">
-              Understand tenants, tickets, AI triage, and auto-reply.
-            </div>
           </Link>
           <Link
             to="/docs/troubleshooting/faq"
