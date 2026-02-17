@@ -1,5 +1,17 @@
 import { useState } from 'react';
-import { Check, Menu, X } from 'lucide-react';
+import {
+  Check,
+  Menu,
+  X,
+  Bot,
+  Twitter,
+  Linkedin,
+  Github,
+  Mail,
+  Shield,
+  Globe2,
+  BarChart3,
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 
@@ -517,6 +529,121 @@ export function Pricing() {
           </section>
         </div>
       </main>
+      <footer className="border-t border-white/10 bg-white/5">
+        <div className="container mx-auto px-6 py-16">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
+            <div>
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-xl bg-grad-main flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
+                  <Bot size={24} />
+                </div>
+                <span className="font-heading font-bold text-xl tracking-tight">OpsFlow</span>
+              </div>
+              <p className="mt-4 text-white/70 text-sm">
+                Autonomous support platform for modern teams.
+              </p>
+              <div className="mt-6 flex items-center gap-4">
+                <a href="#" aria-label="Twitter" className="text-white/70 hover:text-white">
+                  <Twitter />
+                </a>
+                <a href="#" aria-label="LinkedIn" className="text-white/70 hover:text-white">
+                  <Linkedin />
+                </a>
+                <a href="#" aria-label="GitHub" className="text-white/70 hover:text-white">
+                  <Github />
+                </a>
+              </div>
+            </div>
+            <div>
+              <h5 className="text-sm font-semibold mb-4">Product</h5>
+              <ul className="space-y-2 text-sm text-white/70">
+                <li>
+                  <a href="#features-future" className="hover:text-white">
+                    Features
+                  </a>
+                </li>
+                <li>
+                  <a href="#integrations" className="hover:text-white">
+                    Integrations
+                  </a>
+                </li>
+                <li>
+                  <a href="#pricing" className="hover:text-white">
+                    Pricing
+                  </a>
+                </li>
+                <li>
+                  <Link to="/docs" className="hover:text-white">
+                    Docs
+                  </Link>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5 className="text-sm font-semibold mb-4">Company</h5>
+              <ul className="space-y-2 text-sm text-white/70">
+                <li>
+                  <a href="#" className="hover:text-white">
+                    About
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-white">
+                    Careers
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-white">
+                    Contact
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-white">
+                    Press
+                  </a>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5 className="text-sm font-semibold mb-4">Stay in the loop</h5>
+              <form className="flex items-center gap-2">
+                <div className="flex-1 h-10 rounded-lg bg-white/10 border border-white/20 px-3 text-sm text-white/80 flex items-center gap-2">
+                  <Mail size={16} className="opacity-70" />
+                  <input
+                    aria-label="Email"
+                    type="email"
+                    placeholder="you@company.com"
+                    className="bg-transparent outline-none flex-1 placeholder:text-white/50"
+                  />
+                </div>
+                <Button size="sm" className="bg-grad-main text-white">
+                  Subscribe
+                </Button>
+              </form>
+              <p className="text-xs text-white/50 mt-2">
+                By subscribing you agree to our Terms & Privacy.
+              </p>
+            </div>
+          </div>
+          <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-6 text-xs text-white/60">
+            <div className="flex items-center gap-2">
+              <Shield size={14} className="text-green-400" />
+              <span>Enterprise security: SSO, SAML, SOC 2-ready</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Globe2 size={14} className="text-cyan-400" />
+              <span>Global: 99.9% uptime, multi-region</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <BarChart3 size={14} className="text-purple-400" />
+              <span>Analytics: actionable insights out of the box</span>
+            </div>
+          </div>
+          <div className="mt-8 border-t border-white/10 pt-6 text-center text-white/70 text-sm">
+            © 2026 OpsFlow Agent Desk · Terms · Privacy · Security
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
