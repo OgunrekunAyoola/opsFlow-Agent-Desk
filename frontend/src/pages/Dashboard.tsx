@@ -260,6 +260,14 @@ export function Dashboard() {
               </Link>
             ))}
           </div>
+          <div className="mt-4 pt-3 border-t border-slate-100">
+            <Link
+              to="/tickets?mine=true"
+              className="text-xs text-accent-primary hover:underline font-medium"
+            >
+              View tickets assigned to me
+            </Link>
+          </div>
         </div>
       </div>
     </div>
