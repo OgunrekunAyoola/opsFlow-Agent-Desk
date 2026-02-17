@@ -79,7 +79,11 @@ const markdownComponents = {
     const text = String(props.children ?? '');
     const id = slugifyHeading(text);
     return (
-      <h1 id={id} {...props} className="scroll-mt-24">
+      <h1
+        id={id}
+        {...props}
+        className="scroll-mt-24 text-3xl md:text-[32px] leading-tight font-heading font-bold text-slate-900 mb-4"
+      >
         {props.children}
       </h1>
     );
@@ -88,7 +92,11 @@ const markdownComponents = {
     const text = String(props.children ?? '');
     const id = slugifyHeading(text);
     return (
-      <h2 id={id} {...props} className="scroll-mt-24">
+      <h2
+        id={id}
+        {...props}
+        className="scroll-mt-24 text-xl md:text-2xl leading-snug font-heading font-semibold text-slate-900 mt-8 mb-3"
+      >
         {props.children}
       </h2>
     );
@@ -97,11 +105,69 @@ const markdownComponents = {
     const text = String(props.children ?? '');
     const id = slugifyHeading(text);
     return (
-      <h3 id={id} {...props} className="scroll-mt-24">
+      <h3
+        id={id}
+        {...props}
+        className="scroll-mt-24 text-base md:text-lg font-heading font-semibold text-slate-800 mt-5 mb-2"
+      >
         {props.children}
       </h3>
     );
   },
+  p: (props: any) => (
+    <p {...props} className="text-sm md:text-[15px] leading-relaxed text-slate-700 mb-3">
+      {props.children}
+    </p>
+  ),
+  ul: (props: any) => (
+    <ul
+      {...props}
+      className="list-disc list-inside text-sm md:text-[15px] leading-relaxed text-slate-700 mb-3 space-y-1"
+    >
+      {props.children}
+    </ul>
+  ),
+  ol: (props: any) => (
+    <ol
+      {...props}
+      className="list-decimal list-inside text-sm md:text-[15px] leading-relaxed text-slate-700 mb-3 space-y-1"
+    >
+      {props.children}
+    </ol>
+  ),
+  li: (props: any) => (
+    <li {...props} className="pl-1">
+      {props.children}
+    </li>
+  ),
+  strong: (props: any) => (
+    <strong {...props} className="font-semibold text-slate-900">
+      {props.children}
+    </strong>
+  ),
+  em: (props: any) => (
+    <em {...props} className="italic text-slate-800">
+      {props.children}
+    </em>
+  ),
+  a: (props: any) => (
+    <a
+      {...props}
+      className="text-indigo-600 hover:text-indigo-700 underline underline-offset-2"
+      target={props.href?.startsWith('http') ? '_blank' : undefined}
+      rel={props.href?.startsWith('http') ? 'noreferrer' : undefined}
+    >
+      {props.children}
+    </a>
+  ),
+  blockquote: (props: any) => (
+    <blockquote
+      {...props}
+      className="border-l-2 border-slate-200 pl-4 italic text-slate-700 bg-slate-50 rounded-r-lg py-2 pr-3 mb-4"
+    >
+      {props.children}
+    </blockquote>
+  ),
   code: CodeBlock,
 };
 
