@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../lib/api';
 import { useToast } from '../context/ToastContext';
 import { Button } from '../components/ui/Button';
@@ -112,6 +113,14 @@ export function Settings() {
               <div className="text-xs text-text-muted">
                 Configure your provider to forward inbound emails to this address or send webhook
                 with x-inbound-secret.
+              </div>
+              <div className="pt-2">
+                <Link
+                  to="/settings/email"
+                  className="text-xs text-accent-primary underline font-medium"
+                >
+                  Open email forwarding setup
+                </Link>
               </div>
             </div>
 
