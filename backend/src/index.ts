@@ -14,6 +14,7 @@ import dashboardRouter from './routes/dashboard';
 import clientsRouter from './routes/clients';
 import emailRouter from './routes/email';
 import actionsRouter from './routes/actions';
+import notificationsRouter from './routes/notifications';
 
 dotenv.config();
 
@@ -55,8 +56,7 @@ const limiter = rateLimit({
       try {
         const payload: any = jwt.decode(token);
         if (payload && typeof payload.sub === 'string') return `user:${payload.sub}`;
-      } catch {
-      }
+      } catch {}
     }
     const ip = req.ip || (req.connection as any)?.remoteAddress || '';
     return `ip:${ip}`;
@@ -90,6 +90,7 @@ app.use('/dashboard', dashboardRouter);
 app.use('/clients', clientsRouter);
 app.use('/email', emailRouter);
 app.use('/actions', actionsRouter);
+app.use('/notifications', notificationsRouter);
 
 app.get('/', (req: Request, res: Response) => {
   res.send('OpsFlow Agent Desk API');

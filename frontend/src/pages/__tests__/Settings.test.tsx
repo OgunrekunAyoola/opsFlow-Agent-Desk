@@ -31,6 +31,9 @@ describe('Settings page', () => {
   it('loads inbound address and auto-reply settings', async () => {
     apiMock.get.mockResolvedValueOnce({
       data: {
+        user: {
+          role: 'admin',
+        },
         tenant: {
           inboundAddress: 'support+1@opsflow.test',
           autoReplyEnabled: true,
@@ -52,6 +55,9 @@ describe('Settings page', () => {
   it('saves auto-reply settings', async () => {
     apiMock.get.mockResolvedValueOnce({
       data: {
+        user: {
+          role: 'admin',
+        },
         tenant: {
           inboundAddress: 'support+1@opsflow.test',
           autoReplyEnabled: false,

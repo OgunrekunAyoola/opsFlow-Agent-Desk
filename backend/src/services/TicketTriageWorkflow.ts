@@ -6,6 +6,7 @@ import WorkflowStep from '../models/WorkflowStep';
 import TicketReply from '../models/TicketReply';
 import Tenant from '../models/Tenant';
 import UserAction from '../models/UserAction';
+import Notification from '../models/Notification';
 import { emailSendQueue } from '../queue/index';
 import { GeminiLLMService } from './GeminiLLMService';
 
@@ -212,6 +213,13 @@ export class TicketTriageWorkflow {
               priority: priorityResult.priority,
               confidence,
             },
+          });
+          await Notification.create({
+            tenantId,
+            userId: startedByUserId,
+            type: 'auto_reply_sent',
+            message: `Auto-reply sent for ticket ${ticket.subject}`,
+            url: `/tickets/${ticket._id.toString()}`,
           });
         } catch {}
       } else if (ticket.status !== 'closed') {

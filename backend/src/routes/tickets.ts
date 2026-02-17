@@ -4,6 +4,7 @@ import Ticket from '../models/Ticket';
 import Client from '../models/Client';
 import TicketReply from '../models/TicketReply';
 import User from '../models/User';
+import Notification from '../models/Notification';
 import { EmailService } from '../services/EmailService';
 import { emailSendQueue } from '../queue/index';
 import UserAction from '../models/UserAction';
@@ -97,6 +98,26 @@ router.post('/', requireAuth, async (req, res) => {
     .populate('createdById', 'name email')
     .populate('clientId', 'name domain')
     .exec();
+
+  if (ticket.priority === 'high' || ticket.priority === 'urgent') {
+    try {
+      const admins = await User.find({ tenantId, role: 'admin' }).select('_id').exec();
+      if (admins.length > 0) {
+        const shortId = ticket._id.toString().slice(-6);
+        const message = `High priority ticket #${shortId} created: ${ticket.subject}`;
+        const url = `/tickets/${ticket._id.toString()}`;
+        await Notification.insertMany(
+          admins.map((admin) => ({
+            tenantId,
+            userId: admin._id,
+            type: 'high_priority_ticket',
+            message,
+            url,
+          })),
+        );
+      }
+    } catch {}
+  }
 
   res.status(201).json(populated);
 });
@@ -252,6 +273,17 @@ router.patch('/:id', requireAuth, async (req, res) => {
         const html = `<p>Hi ${name},</p><p>You've been assigned ticket #${shortId}.</p><p><strong>Subject:</strong> ${ticket.subject}</p><p><a href="${ticketUrl}">View ticket in OpsFlow</a></p>`;
         await emailService.send({ to: email, subject, text, html });
       }
+
+      const shortId = ticket._id.toString().slice(-6);
+      const message = `You were assigned ticket #${shortId}: ${ticket.subject}`;
+      const url = `/tickets/${ticket._id.toString()}`;
+      await Notification.create({
+        tenantId,
+        userId: newAssigneeId,
+        type: 'ticket_assigned',
+        message,
+        url,
+      });
     } catch (err) {
       console.error('Failed to send assignment email', err);
     }
