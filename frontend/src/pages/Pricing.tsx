@@ -3,39 +3,59 @@ import { Check, Menu, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 
-const PLANS = [
+const PAID_PLANS = [
   {
-    name: 'Starter',
-    price: '$0',
-    period: 'forever',
-    badge: 'Sandbox',
-    highlight: false,
-    features: ['Up to 3 teammates', 'Email channel only', 'AI triage in preview mode'],
-  },
-  {
+    id: 'growth',
     name: 'Growth',
-    price: '$49',
+    priceMonthly: '$39',
+    priceYearly: '$374',
     period: 'per agent / month',
-    badge: 'Most popular',
-    highlight: true,
+    badge: 'Best for small teams',
+    highlight: false,
+    idealFor: 'Startups and SMBs getting serious about support.',
+    ctaLabel: 'Start with Growth',
     features: [
-      'Unlimited teammates',
-      'Multiple brands and inboxes',
-      'Full AI triage and suggested replies',
-      'Priority support SLA',
+      'Core AI triage, drafts, and sentiment',
+      'Unlimited tickets over email',
+      'Up to 10 agents with roles',
+      'Basic metrics dashboard and weekly reports',
+      'Email support and knowledge base',
     ],
   },
   {
-    name: 'Enterprise',
-    price: 'Let’s talk',
-    period: 'custom',
-    badge: 'Enterprise',
-    highlight: false,
+    id: 'professional',
+    name: 'Professional',
+    priceMonthly: '$69',
+    priceYearly: '$662',
+    period: 'per agent / month',
+    badge: 'Most popular',
+    highlight: true,
+    idealFor: 'Growing teams and agencies managing multiple brands.',
+    ctaLabel: 'Start with Professional',
     features: [
-      'Custom data retention and SSO',
-      'Dedicated onboarding engineer',
-      'Fine-grained permissions and audit log',
-      'Custom workflows and integrations',
+      'Everything in Growth',
+      'Advanced AI auto-reply and confidence controls',
+      'Multi-channel (email, chat, WhatsApp)',
+      'SLAs, advanced analytics, and report exports',
+      'Priority support and onboarding call',
+    ],
+  },
+  {
+    id: 'enterprise',
+    name: 'Enterprise',
+    priceMonthly: '$149',
+    priceYearly: 'Custom',
+    period: 'per agent / month or custom',
+    badge: 'For large teams',
+    highlight: false,
+    idealFor: 'Enterprises with complex workflows and strict compliance needs.',
+    ctaLabel: 'Talk to sales',
+    features: [
+      'Everything in Professional',
+      'Dedicated AI instance and data isolation',
+      'Omnichannel routing and custom integrations',
+      'SAML/SSO, audit logs, and data residency options',
+      'Dedicated account team and custom SLAs',
     ],
   },
 ];
@@ -157,62 +177,344 @@ export function Pricing() {
       )}
       <main className="relative">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.12),_transparent_55%),radial-gradient(circle_at_bottom,_rgba(129,140,248,0.18),_transparent_60%)] pointer-events-none" />
-        <div className="relative container mx-auto px-6 py-12 lg:py-16 space-y-10">
+        <div className="relative container mx-auto px-6 py-12 lg:py-16 space-y-12">
           <div className="max-w-3xl">
             <p className="text-xs uppercase tracking-[0.25em] text-slate-400 mb-3">Pricing</p>
             <h1 className="text-4xl md:text-5xl font-heading font-bold mb-4 text-white">
-              Clear plans for serious support teams
+              Pricing that grows with your team
             </h1>
-            <p className="text-sm md:text-base text-slate-300">
-              Choose a plan that matches your volume and complexity. All plans share the same core
-              platform, security model, and API surface; you only scale up when your operations do.
+            <p className="text-sm md:text-base text-slate-300 max-w-2xl">
+              Start with a 14-day free trial. No credit card required. Choose a plan when you are
+              ready and only pay for the agents you keep active.
             </p>
+            <div className="mt-5 inline-flex flex-wrap items-center gap-3 rounded-full border border-cyan-400/40 bg-cyan-500/10 px-4 py-2">
+              <span className="text-xs font-medium text-cyan-200">
+                14-day free trial • All Growth features • No card required
+              </span>
+            </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
-            {PLANS.map((plan) => {
-              return (
-                <div
-                  key={plan.name}
-                  className={`rounded-2xl border p-6 flex flex-col gap-4 ${
-                    plan.highlight
-                      ? 'border-cyan-300/80 ring-1 ring-cyan-300/40 bg-slate-900/80'
-                      : 'border-slate-800 bg-slate-900/60'
-                  }`}
-                >
-                  <div className="space-y-2">
-                    <div className="text-xs uppercase tracking-[0.18em] text-slate-400">
-                      {plan.badge}
-                    </div>
-                    <div className="text-lg font-heading font-semibold text-slate-100">
-                      {plan.name}
-                    </div>
-                    <div className="mt-2 flex items-baseline gap-1">
-                      <span className="text-3xl font-heading font-bold text-white">
-                        {plan.price}
-                      </span>
-                      <span className="text-xs text-slate-400">{plan.period}</span>
-                    </div>
-                  </div>
-                  <ul className="flex-1 space-y-2 text-sm text-slate-300 mt-2">
-                    {plan.features.map((f) => (
-                      <li key={f} className="flex items-center gap-2">
-                        <Check size={14} className="text-emerald-400" />
-                        <span>{f}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Link to="/signup" className="mt-4">
-                    <Button
-                      className="w-full h-11"
-                      variant={plan.highlight ? 'primary' : 'secondary'}
-                    >
-                      {plan.name === 'Enterprise' ? 'Talk to sales' : 'Start with this plan'}
-                    </Button>
-                  </Link>
+
+          <section aria-label="All plans include" className="space-y-4">
+            <p className="text-xs uppercase tracking-[0.22em] text-slate-400">All plans include</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium text-slate-100">
+                  <Check size={16} className="text-emerald-400" />
+                  Core platform
                 </div>
-              );
-            })}
-          </div>
+                <p className="text-xs text-slate-300">
+                  Unlimited tickets, AI-powered triage and drafts, team collaboration, and a shared
+                  metrics dashboard for your whole workspace.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium text-slate-100">
+                  <Check size={16} className="text-emerald-400" />
+                  Reliable operations
+                </div>
+                <p className="text-xs text-slate-300">
+                  Tenant-isolated data model, HTTPS everywhere, daily backups, and opinionated
+                  defaults for safe AI usage.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium text-slate-100">
+                  <Check size={16} className="text-emerald-400" />
+                  Human support
+                </div>
+                <p className="text-xs text-slate-300">
+                  Email support from the team building OpsFlow, plus an evolving docs site and
+                  runbooks for common issues.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section aria-label="Paid plans" className="space-y-6">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-heading font-semibold text-white mb-1">
+                  Choose your plan
+                </h2>
+                <p className="text-xs text-slate-400">
+                  Prices shown are monthly. Save around 20% when you pay annually.
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
+              {PAID_PLANS.map((plan) => {
+                return (
+                  <div
+                    key={plan.id}
+                    className={`rounded-2xl border p-6 flex flex-col gap-4 ${
+                      plan.highlight
+                        ? 'border-cyan-300/80 ring-1 ring-cyan-300/40 bg-slate-900/80'
+                        : 'border-slate-800 bg-slate-900/60'
+                    }`}
+                  >
+                    <div className="space-y-2">
+                      <div className="text-xs uppercase tracking-[0.18em] text-slate-400">
+                        {plan.badge}
+                      </div>
+                      <div className="text-lg font-heading font-semibold text-slate-100">
+                        {plan.name}
+                      </div>
+                      <div className="mt-2 flex items-baseline gap-1">
+                        <span className="text-3xl font-heading font-bold text-white">
+                          {plan.priceMonthly}
+                        </span>
+                        <span className="text-xs text-slate-400">{plan.period}</span>
+                      </div>
+                      <div className="text-[11px] text-slate-400">
+                        or {plan.priceYearly}/agent/year with annual billing
+                      </div>
+                      <p className="text-xs text-slate-300">{plan.idealFor}</p>
+                    </div>
+                    <ul className="flex-1 space-y-2 text-sm text-slate-300 mt-2">
+                      {plan.features.map((f) => (
+                        <li key={f} className="flex items-center gap-2">
+                          <Check size={14} className="text-emerald-400" />
+                          <span>{f}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <Link to={plan.id === 'enterprise' ? '/contact' : '/signup'} className="mt-4">
+                      <Button
+                        className="w-full h-11"
+                        variant={plan.highlight ? 'primary' : 'secondary'}
+                      >
+                        {plan.ctaLabel}
+                      </Button>
+                    </Link>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          <section
+            aria-label="Plan comparison"
+            className="space-y-4 rounded-2xl border border-slate-800 bg-slate-950/70 p-6"
+          >
+            <div className="flex items-center justify-between gap-4 mb-2">
+              <div>
+                <h2 className="text-lg font-heading font-semibold text-white">Compare plans</h2>
+                <p className="text-xs text-slate-400">
+                  See how Growth, Professional, and Enterprise differ on features and limits.
+                </p>
+              </div>
+            </div>
+            <div className="overflow-x-auto -mx-4 md:mx-0">
+              <table className="min-w-full text-xs text-left border-separate border-spacing-y-1">
+                <thead>
+                  <tr>
+                    <th className="py-2 pr-4 text-slate-400 font-normal">Feature</th>
+                    <th className="py-2 px-3 text-slate-100 font-semibold">Growth</th>
+                    <th className="py-2 px-3 text-slate-100 font-semibold">Professional</th>
+                    <th className="py-2 pl-3 text-slate-100 font-semibold">Enterprise</th>
+                  </tr>
+                </thead>
+                <tbody className="align-top">
+                  <tr>
+                    <td className="py-2 pr-4 text-slate-300">Pricing</td>
+                    <td className="py-2 px-3 text-slate-200">
+                      $39/agent/mo
+                      <br />
+                      Save 20% annually
+                    </td>
+                    <td className="py-2 px-3 text-slate-200">
+                      $69/agent/mo
+                      <br />
+                      Save 20% annually
+                    </td>
+                    <td className="py-2 px-3 text-slate-200">
+                      From $149/agent/mo
+                      <br />
+                      Custom for 100+ agents
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 pr-4 text-slate-300">Agents</td>
+                    <td className="py-2 px-3 text-slate-200">Up to 10</td>
+                    <td className="py-2 px-3 text-slate-200">Up to 50</td>
+                    <td className="py-2 px-3 text-slate-200">Unlimited</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 pr-4 text-slate-300">Channels</td>
+                    <td className="py-2 px-3 text-slate-200">Email</td>
+                    <td className="py-2 px-3 text-slate-200">Email, chat, WhatsApp</td>
+                    <td className="py-2 px-3 text-slate-200">Omnichannel (all)</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 pr-4 text-slate-300">AI</td>
+                    <td className="py-2 px-3 text-slate-200">
+                      Triage, drafts (~80%),
+                      <br />
+                      sentiment, priority
+                    </td>
+                    <td className="py-2 px-3 text-slate-200">
+                      Everything in Growth plus
+                      <br />
+                      advanced auto-reply and controls
+                    </td>
+                    <td className="py-2 px-3 text-slate-200">
+                      Dedicated AI instance,
+                      <br />
+                      custom models and routing rules
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 pr-4 text-slate-300">Analytics</td>
+                    <td className="py-2 px-3 text-slate-200">
+                      Basic metrics dashboard,
+                      <br />
+                      weekly email reports
+                    </td>
+                    <td className="py-2 px-3 text-slate-200">
+                      Advanced dashboards,
+                      <br />
+                      SLA reporting, exports
+                    </td>
+                    <td className="py-2 px-3 text-slate-200">
+                      Custom dashboards, real-time,
+                      <br />
+                      BI exports and API access
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 pr-4 text-slate-300">Integrations</td>
+                    <td className="py-2 px-3 text-slate-200">Email providers, basic automations</td>
+                    <td className="py-2 px-3 text-slate-200">
+                      Zendesk/Intercom, HubSpot,
+                      <br />
+                      webhooks, advanced alerts
+                    </td>
+                    <td className="py-2 px-3 text-slate-200">
+                      Custom integrations and
+                      <br />
+                      dedicated integration engineer
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 pr-4 text-slate-300">Support</td>
+                    <td className="py-2 px-3 text-slate-200">
+                      Email (24–48h),
+                      <br />
+                      docs and community
+                    </td>
+                    <td className="py-2 px-3 text-slate-200">
+                      Email + chat (4–12h),
+                      <br />
+                      monthly check-ins
+                    </td>
+                    <td className="py-2 px-3 text-slate-200">
+                      Dedicated account team,
+                      <br />
+                      1–2h response, 24/7 option
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 pr-4 text-slate-300">Security</td>
+                    <td className="py-2 px-3 text-slate-200">
+                      Standard security,
+                      <br />
+                      HTTPS, backups
+                    </td>
+                    <td className="py-2 px-3 text-slate-200">
+                      SSO, audit logs,
+                      <br />
+                      custom retention
+                    </td>
+                    <td className="py-2 px-3 text-slate-200">
+                      SAML/SSO, data residency,
+                      <br />
+                      SOC 2 and custom SLAs
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 pr-4 text-slate-300">Data retention</td>
+                    <td className="py-2 px-3 text-slate-200">30 days</td>
+                    <td className="py-2 px-3 text-slate-200">90 days</td>
+                    <td className="py-2 px-3 text-slate-200">Unlimited or custom</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section aria-label="FAQ" className="space-y-6">
+            <div>
+              <h2 className="text-lg font-heading font-semibold text-white mb-1">
+                Frequently asked questions
+              </h2>
+              <p className="text-xs text-slate-400">
+                If you have a question that is not covered here, reach out to{' '}
+                <a
+                  href="mailto:sales@opsflowai.com"
+                  className="text-cyan-300 hover:text-cyan-200 underline underline-offset-2"
+                >
+                  sales@opsflowai.com
+                </a>
+                .
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="space-y-2 rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+                <h3 className="text-sm font-semibold text-slate-100">
+                  What happens after my 14-day trial?
+                </h3>
+                <p className="text-xs text-slate-300">
+                  After 14 days you will be asked to choose a paid plan to continue using OpsFlow.
+                  If you do nothing, your workspace becomes read-only: you can view tickets but
+                  cannot create new ones or reply.
+                </p>
+              </div>
+              <div className="space-y-2 rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+                <h3 className="text-sm font-semibold text-slate-100">Can I change plans later?</h3>
+                <p className="text-xs text-slate-300">
+                  Yes. You can upgrade or downgrade at any time. Upgrades take effect immediately;
+                  downgrades apply from your next billing period.
+                </p>
+              </div>
+              <div className="space-y-2 rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+                <h3 className="text-sm font-semibold text-slate-100">
+                  What payment methods do you accept?
+                </h3>
+                <p className="text-xs text-slate-300">
+                  We use Stripe for billing and accept major credit and debit cards (Visa,
+                  Mastercard, Amex). Enterprise customers can also pay by invoice on Net 30 terms.
+                </p>
+              </div>
+              <div className="space-y-2 rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+                <h3 className="text-sm font-semibold text-slate-100">
+                  Do you offer discounts or volume pricing?
+                </h3>
+                <p className="text-xs text-slate-300">
+                  Yes. Annual billing includes around 20% savings compared to monthly. We also offer
+                  volume discounts for larger teams on the Enterprise plan.
+                </p>
+              </div>
+              <div className="space-y-2 rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+                <h3 className="text-sm font-semibold text-slate-100">
+                  What if I need more than 50 agents?
+                </h3>
+                <p className="text-xs text-slate-300">
+                  If you are running a large team or multiple brands, the Enterprise plan scales
+                  with you. Contact us to design the right mix of seats, channels, and support.
+                </p>
+              </div>
+              <div className="space-y-2 rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+                <h3 className="text-sm font-semibold text-slate-100">
+                  Can I try Professional or Enterprise features during trial?
+                </h3>
+                <p className="text-xs text-slate-300">
+                  Your trial unlocks the Growth feature set by default. If you want to explore
+                  Professional or Enterprise capabilities, we can walk you through them in a live
+                  demo.
+                </p>
+              </div>
+            </div>
+          </section>
         </div>
       </main>
     </div>
