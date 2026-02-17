@@ -18,6 +18,7 @@ export function Team() {
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [role, setRole] = useState<'admin' | 'member' | null>(null);
   const toast = useToast();
 
   const fetchUsers = async () => {
@@ -38,8 +39,32 @@ export function Team() {
   };
 
   useEffect(() => {
-    fetchUsers();
+    const loadRole = async () => {
+      try {
+        const res = await api.get('/auth/me');
+        const r = res.data?.user?.role;
+        if (r === 'admin' || r === 'member') {
+          setRole(r);
+        } else {
+          setRole('member');
+        }
+      } catch (err: any) {
+        console.error('Failed to load current user role', err);
+        setRole('member');
+      }
+    };
+    loadRole();
   }, []);
+
+  useEffect(() => {
+    if (role === 'admin') {
+      fetchUsers();
+    }
+    if (role === 'member') {
+      setIsLoading(false);
+      setError('You do not have permission to view team management.');
+    }
+  }, [role]);
 
   return (
     <div className="space-y-6">
@@ -48,9 +73,11 @@ export function Team() {
           <h2 className="text-2xl font-heading font-bold text-text-primary">Team Members</h2>
           <p className="text-sm text-text-muted">Manage your support team and permissions.</p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)}>
-          <Plus size={18} className="mr-2" /> Add Member
-        </Button>
+        {role === 'admin' && (
+          <Button onClick={() => setIsModalOpen(true)}>
+            <Plus size={18} className="mr-2" /> Add Member
+          </Button>
+        )}
       </div>
 
       <div className="glass-panel rounded-2xl overflow-hidden">
@@ -142,11 +169,13 @@ export function Team() {
         </div>
       </div>
 
-      <CreateUserModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSuccess={fetchUsers}
-      />
+      {role === 'admin' && (
+        <CreateUserModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onSuccess={fetchUsers}
+        />
+      )}
     </div>
   );
 }

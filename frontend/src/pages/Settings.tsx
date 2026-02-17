@@ -21,6 +21,11 @@ export function Settings() {
         setIsLoading(true);
         setError(null);
         const res = await api.get('/auth/me');
+        const user = res.data?.user;
+        if (!user || user.role !== 'admin') {
+          setError('You do not have permission to view settings.');
+          return;
+        }
         const tenant = res.data?.tenant;
         const addr = tenant?.inboundAddress || res.data?.inbound?.address || '';
         setInboundAddress(addr);

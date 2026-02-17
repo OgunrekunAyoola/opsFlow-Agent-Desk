@@ -1,18 +1,36 @@
 import { LayoutDashboard, Ticket, Users, Settings, Bot, Building2, BarChart3 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { cn } from '../../lib/utils';
+import api from '../../lib/api';
 
-const navItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
-  { icon: BarChart3, label: 'Metrics', href: '/dashboard/metrics' },
-  { icon: Ticket, label: 'Tickets', href: '/tickets' },
-  { icon: Building2, label: 'Clients', href: '/clients' },
-  { icon: Users, label: 'Team', href: '/team' },
-  { icon: Settings, label: 'Settings', href: '/settings' },
+type Role = 'admin' | 'member';
+
+const navItems: { icon: any; label: string; href: string; roles: Role[] }[] = [
+  { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard', roles: ['admin', 'member'] },
+  { icon: BarChart3, label: 'Metrics', href: '/dashboard/metrics', roles: ['admin', 'member'] },
+  { icon: Ticket, label: 'Tickets', href: '/tickets', roles: ['admin', 'member'] },
+  { icon: Building2, label: 'Clients', href: '/clients', roles: ['admin'] },
+  { icon: Users, label: 'Team', href: '/team', roles: ['admin'] },
+  { icon: Settings, label: 'Settings', href: '/settings', roles: ['admin'] },
 ];
 
 export function Sidebar() {
   const location = useLocation();
+  const [role, setRole] = useState<Role>('member');
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await api.get('/auth/me');
+        const userRole = res.data?.user?.role as Role | undefined;
+        if (userRole === 'admin' || userRole === 'member') {
+          setRole(userRole);
+        }
+      } catch {}
+    };
+    load();
+  }, []);
 
   return (
     <aside className="fixed left-4 top-4 bottom-4 w-64 glass-panel rounded-2xl flex flex-col p-4 z-20 hidden md:flex">
@@ -24,24 +42,26 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 space-y-2">
-        {navItems.map((item) => {
-          const isActive = location.pathname.startsWith(item.href);
-          return (
-            <Link
-              key={item.href}
-              to={item.href}
-              className={cn(
-                'flex items-center gap-3 px-4 py-3 rounded-xl transition-all',
-                isActive
-                  ? 'bg-grad-main text-white shadow-md shadow-blue-500/20'
-                  : 'text-text-muted hover:bg-white/50 hover:text-text-primary',
-              )}
-            >
-              <item.icon size={20} />
-              <span className="font-medium">{item.label}</span>
-            </Link>
-          );
-        })}
+        {navItems
+          .filter((item) => item.roles.includes(role))
+          .map((item) => {
+            const isActive = location.pathname.startsWith(item.href);
+            return (
+              <Link
+                key={item.href}
+                to={item.href}
+                className={cn(
+                  'flex items-center gap-3 px-4 py-3 rounded-xl transition-all',
+                  isActive
+                    ? 'bg-grad-main text-white shadow-md shadow-blue-500/20'
+                    : 'text-text-muted hover:bg-white/50 hover:text-text-primary',
+                )}
+              >
+                <item.icon size={20} />
+                <span className="font-medium">{item.label}</span>
+              </Link>
+            );
+          })}
       </nav>
 
       <div className="p-4 mt-auto">
