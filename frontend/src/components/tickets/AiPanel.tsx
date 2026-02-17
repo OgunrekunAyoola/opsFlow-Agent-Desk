@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Bot, Sparkles, Tag, AlertTriangle, Edit3, Check, History } from 'lucide-react';
+import { Bot, Sparkles, Tag, AlertTriangle, Check, History } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { cn } from '../../lib/utils';
 import api from '../../lib/api';

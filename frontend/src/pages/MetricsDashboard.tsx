@@ -315,7 +315,6 @@ function LineChartSimple({
 }
 
 function AiVsHumanChart({ ai, human }: { ai: number; human: number }) {
-  const total = ai + human;
   const aiSafe = ai || 0;
   const humanSafe = human || 0;
   const safeTotal = aiSafe + humanSafe;
