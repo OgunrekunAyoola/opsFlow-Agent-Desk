@@ -81,7 +81,7 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/pricing" element={<Pricing />} />
-        <Route path="/docs" element={<Docs />} />
+        <Route path="/docs/*" element={<Docs />} />
 
         <Route element={<RequireAuth />}>
           <Route path="dashboard" element={<Dashboard />} />

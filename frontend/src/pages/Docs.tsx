@@ -1,395 +1,550 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { BookOpen, Menu, X } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { BookOpen, Menu, Search, X } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import * as Prism from 'prismjs';
+import 'prismjs/themes/prism-tomorrow.css';
+import {
+  type Doc,
+  type DocsCategory,
+  type DocsCategoryId,
+  getDocByCategoryAndSlug,
+  getDocsCategories,
+  getDocsForCategory,
+  useDocsSearch,
+} from '../lib/docs';
 
-export function Docs() {
-  const [mobileOpen, setMobileOpen] = useState(false);
+type Heading = {
+  id: string;
+  text: string;
+  level: number;
+};
+
+function slugifyHeading(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-');
+}
+
+function extractHeadings(markdown: string): Heading[] {
+  return markdown
+    .split('\n')
+    .map((line) => {
+      if (line.startsWith('## ')) {
+        return {
+          id: slugifyHeading(line.replace(/^##\s+/, '')),
+          text: line.replace(/^##\s+/, ''),
+          level: 2,
+        };
+      }
+      if (line.startsWith('### ')) {
+        return {
+          id: slugifyHeading(line.replace(/^###\s+/, '')),
+          text: line.replace(/^###\s+/, ''),
+          level: 3,
+        };
+      }
+      return null;
+    })
+    .filter((h): h is Heading => Boolean(h));
+}
+
+function CodeBlock(props: { inline?: boolean; className?: string; children?: ReactNode }) {
+  const { inline, className, children, ...rest } = props;
+  const match = /language-(\w+)/.exec(className || '');
+  const language = match?.[1];
+  const code = String(children ?? '');
+
+  if (!inline && language && (Prism as any).languages[language]) {
+    const html = (Prism as any).highlight(code, (Prism as any).languages[language], language);
+    return (
+      <pre className={`language-${language}`}>
+        <code dangerouslySetInnerHTML={{ __html: html }} />
+      </pre>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <header className="border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-xl shadow-[0_18px_45px_rgba(15,23,42,0.85)]">
-        <div className="container mx-auto px-6 py-4 flex items-center justify-between gap-4">
-          <Link to="/" className="flex items-center gap-2 group">
-            <div className="h-8 w-8 rounded-md bg-white/5 flex items-center justify-center">
-              <span className="text-xs font-bold text-cyan-300">OF</span>
+    <code className={className} {...rest}>
+      {children}
+    </code>
+  );
+}
+
+const markdownComponents = {
+  h1: (props: any) => {
+    const text = String(props.children ?? '');
+    const id = slugifyHeading(text);
+    return (
+      <h1 id={id} {...props} className="scroll-mt-24">
+        {props.children}
+      </h1>
+    );
+  },
+  h2: (props: any) => {
+    const text = String(props.children ?? '');
+    const id = slugifyHeading(text);
+    return (
+      <h2 id={id} {...props} className="scroll-mt-24">
+        {props.children}
+      </h2>
+    );
+  },
+  h3: (props: any) => {
+    const text = String(props.children ?? '');
+    const id = slugifyHeading(text);
+    return (
+      <h3 id={id} {...props} className="scroll-mt-24">
+        {props.children}
+      </h3>
+    );
+  },
+  code: CodeBlock,
+};
+
+function getCategoryById(id: DocsCategoryId): DocsCategory | undefined {
+  return getDocsCategories().find((c) => c.id === id);
+}
+
+function DocsBreadcrumbs(props: { doc: Doc | null }) {
+  const category = props.doc ? getCategoryById(props.doc.categoryId) : null;
+
+  return (
+    <nav className="flex items-center gap-1 text-[11px] text-slate-400 mb-3">
+      <Link to="/docs" className="hover:text-slate-100">
+        Docs
+      </Link>
+      <span>/</span>
+      {category ? (
+        <>
+          <Link
+            to={`/docs/${category.slug}/${getDocsForCategory(category.id)[0]?.slug || ''}`}
+            className="hover:text-slate-100"
+          >
+            {category.label}
+          </Link>
+          {props.doc && <span>/</span>}
+        </>
+      ) : null}
+      {props.doc && <span className="text-slate-300 truncate max-w-[50vw]">{props.doc.title}</span>}
+    </nav>
+  );
+}
+
+function DocsSidebar(props: { currentDoc: Doc | null }) {
+  const categories = getDocsCategories();
+  const currentId = props.currentDoc?.id;
+
+  return (
+    <aside className="lg:pt-4 lg:sticky lg:top-24">
+      <div className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.25em] text-slate-500 mb-3">
+        <BookOpen size={14} />
+        <span>Docs</span>
+      </div>
+      <p className="text-xs text-slate-500 mb-4">
+        Browse by section or jump straight into troubleshooting.
+      </p>
+      <nav className="space-y-5 text-sm">
+        {categories.map((category) => {
+          const items = getDocsForCategory(category.id);
+          if (!items.length) return null;
+          return (
+            <div key={category.id} className="space-y-2">
+              <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-[0.16em]">
+                {category.label}
+              </div>
+              <div className="space-y-1">
+                {items.map((doc) => {
+                  const active = doc.id === currentId;
+                  return (
+                    <Link
+                      key={doc.id}
+                      to={`/docs/${category.slug}/${doc.slug}`}
+                      className={[
+                        'block rounded-md px-3 py-1.5 text-xs transition-colors',
+                        active
+                          ? 'bg-slate-900 text-slate-100 border border-slate-700'
+                          : 'text-slate-400 hover:text-slate-100 hover:bg-slate-900/60',
+                      ].join(' ')}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span>{doc.title}</span>
+                        {doc.readTime && (
+                          <span className="text-[10px] text-slate-500">{doc.readTime}</span>
+                        )}
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
-            <div className="flex flex-col">
-              <span className="font-heading font-semibold text-sm tracking-tight text-white group-hover:text-cyan-200 transition-colors">
-                OpsFlow
-              </span>
-              <span className="text-[11px] text-white/60">Developer Docs</span>
+          );
+        })}
+      </nav>
+    </aside>
+  );
+}
+
+const POPULAR_DOC_IDS = [
+  'getting-started/what-is-opsflow',
+  'getting-started/quick-start',
+  'setup/email-forwarding',
+  'troubleshooting/faq',
+];
+
+function DocsHome(props: { search: string; onSearchChange: (value: string) => void }) {
+  const docs = useDocsSearch(props.search);
+  const categories = getDocsCategories();
+
+  const popular = docs.filter((doc) => POPULAR_DOC_IDS.includes(doc.id)).slice(0, 3);
+
+  return (
+    <div className="space-y-10">
+      <section className="space-y-6">
+        <div className="space-y-3">
+          <h1 className="text-3xl md:text-4xl font-heading font-bold text-slate-900">
+            OpsFlow Documentation
+          </h1>
+          <p className="text-sm text-slate-600 max-w-2xl">
+            Everything you need to get OpsFlow running in production – from first login to inbound
+            email, AI triage, and advanced integrations.
+          </p>
+        </div>
+        <div className="max-w-xl">
+          <label className="flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 shadow-sm">
+            <Search size={16} className="text-slate-400" />
+            <input
+              type="search"
+              placeholder="Search documentation..."
+              className="flex-1 bg-transparent outline-none placeholder:text-slate-400 text-sm"
+              value={props.search}
+              onChange={(event) => props.onSearchChange(event.target.value)}
+            />
+          </label>
+          <p className="mt-1 text-[11px] text-slate-400">
+            Search matches article titles, summaries, and body text.
+          </p>
+        </div>
+      </section>
+      <section className="space-y-4">
+        <h2 className="text-sm font-heading font-semibold text-slate-900">Quick links</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <Link
+            to="/docs/getting-started/quick-start"
+            className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700 hover:border-slate-300 hover:shadow-sm transition-shadow"
+          >
+            <div className="text-xs font-semibold text-indigo-500 mb-1">🚀 Quick start</div>
+            <div className="text-xs text-slate-500">
+              Create a workspace and wire your first tickets.
             </div>
           </Link>
-          <nav className="hidden md:flex items-center gap-6 text-sm">
-            <Link
-              to="/#features-future"
-              className="px-3 py-1 rounded-full font-medium text-slate-200/80 hover:text-white hover:bg-slate-800/70 transition-colors"
-            >
-              Features
-            </Link>
-            <Link
-              to="/#integrations"
-              className="px-3 py-1 rounded-full font-medium text-slate-200/80 hover:text-white hover:bg-slate-800/70 transition-colors"
-            >
-              Integrations
-            </Link>
-            <Link
-              to="/pricing"
-              className="px-3 py-1 rounded-full font-medium text-slate-200/80 hover:text-white hover:bg-slate-800/70 transition-colors"
-            >
-              Pricing
-            </Link>
-            <Link
-              to="/docs"
-              className="px-3 py-1 rounded-full font-medium text-slate-200/80 hover:text-white hover:bg-slate-800/70 transition-colors"
-            >
-              Docs
-            </Link>
-          </nav>
-          <div className="flex items-center gap-3 text-sm">
+          <Link
+            to="/docs/setup/email-forwarding"
+            className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700 hover:border-slate-300 hover:shadow-sm transition-shadow"
+          >
+            <div className="text-xs font-semibold text-sky-500 mb-1">📧 Email setup</div>
+            <div className="text-xs text-slate-500">Connect your support inbox to OpsFlow.</div>
+          </Link>
+          <Link
+            to="/docs/getting-started/core-concepts"
+            className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700 hover:border-slate-300 hover:shadow-sm transition-shadow"
+          >
+            <div className="text-xs font-semibold text-emerald-500 mb-1">📚 Core concepts</div>
+            <div className="text-xs text-slate-500">
+              Understand tenants, tickets, AI triage, and auto-reply.
+            </div>
+          </Link>
+          <Link
+            to="/docs/troubleshooting/faq"
+            className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700 hover:border-slate-300 hover:shadow-sm transition-shadow"
+          >
+            <div className="text-xs font-semibold text-amber-500 mb-1">❓ FAQ</div>
+            <div className="text-xs text-slate-500">Find answers to common questions.</div>
+          </Link>
+        </div>
+      </section>
+      <section className="space-y-4">
+        <h2 className="text-sm font-heading font-semibold text-slate-900">Browse by category</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {categories.map((category) => {
+            const count = docs.filter((doc) => doc.categoryId === category.id).length;
+            if (!count) return null;
+            return (
+              <div key={category.id} className="rounded-xl border border-slate-200 bg-white p-4">
+                <div className="text-xs font-semibold text-slate-700 mb-1">{category.label}</div>
+                <p className="text-xs text-slate-500 mb-3">
+                  {category.id === 'getting-started' &&
+                    'Learn what OpsFlow is and how to get value in minutes.'}
+                  {category.id === 'setup' &&
+                    'Connect email, providers, and integrations in a safe, reversible way.'}
+                  {category.id === 'features' &&
+                    'Explore AI triage, auto-reply, sentiment analysis, and dashboards.'}
+                  {category.id === 'integrations' &&
+                    'Use OpsFlow alongside Zendesk, Intercom, and your existing stack.'}
+                  {category.id === 'use-cases' &&
+                    'See how e-commerce, SaaS, and agencies put OpsFlow to work.'}
+                  {category.id === 'troubleshooting' &&
+                    'Fix the most common issues with inbound email, AI, and access.'}
+                </p>
+                <div className="text-[11px] text-slate-400">{count} docs</div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+      <section className="space-y-4">
+        <h2 className="text-sm font-heading font-semibold text-slate-900">Popular articles</h2>
+        <div className="space-y-3">
+          {popular.map((doc, index) => {
+            const category = getCategoryById(doc.categoryId);
+            return (
+              <Link
+                key={doc.id}
+                to={`/docs/${category?.slug}/${doc.slug}`}
+                className="flex items-center justify-between gap-4 rounded-lg border border-slate-200 bg-white px-4 py-3 hover:border-slate-300 hover:shadow-sm transition-shadow"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-slate-400 w-4 text-right">{index + 1}.</span>
+                  <div>
+                    <div className="text-xs font-medium text-slate-800">{doc.title}</div>
+                    {doc.summary && (
+                      <div className="text-[11px] text-slate-500 line-clamp-1">{doc.summary}</div>
+                    )}
+                  </div>
+                </div>
+                {doc.readTime && (
+                  <div className="text-[11px] text-slate-400 hidden sm:block">{doc.readTime}</div>
+                )}
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function HelpfulFooter() {
+  return (
+    <div className="mt-8 pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="text-xs text-slate-500">Was this helpful?</div>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          className="px-3 py-1.5 text-xs rounded-full border border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+        >
+          👍 Yes
+        </button>
+        <button
+          type="button"
+          className="px-3 py-1.5 text-xs rounded-full border border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+        >
+          👎 No
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function DocsArticlePage(props: { doc: Doc }) {
+  const category = getCategoryById(props.doc.categoryId);
+  const inCategory = getDocsForCategory(props.doc.categoryId);
+  const currentIndex = inCategory.findIndex((d) => d.id === props.doc.id);
+  const nextDoc =
+    currentIndex >= 0 && currentIndex < inCategory.length - 1 ? inCategory[currentIndex + 1] : null;
+  const headings = extractHeadings(props.doc.content);
+
+  return (
+    <div className="space-y-6">
+      <DocsBreadcrumbs doc={props.doc} />
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-heading font-bold text-slate-900 mb-1">
+            {props.doc.title}
+          </h1>
+          <div className="flex items-center gap-2 text-[11px] text-slate-500">
+            {category && <span>{category.label}</span>}
+            {props.doc.readTime && (
+              <>
+                <span>•</span>
+                <span>{props.doc.readTime}</span>
+              </>
+            )}
+            {props.doc.updatedAt && (
+              <>
+                <span>•</span>
+                <span>Updated {props.doc.updatedAt}</span>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-slate-200 bg-white px-5 py-6">
+        <div className="lg:flex lg:items-start lg:gap-10">
+          <div className="lg:flex-1 min-w-0">
+            <div className="prose prose-sm max-w-none prose-slate">
+              <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents as any}>
+                {props.doc.content}
+              </ReactMarkdown>
+            </div>
+            <HelpfulFooter />
+            {nextDoc && (
+              <div className="mt-6 pt-4 border-t border-slate-200 flex items-center justify-between gap-3">
+                <div className="text-xs text-slate-500">Next</div>
+                <Link
+                  to={`/docs/${category?.slug}/${nextDoc.slug}`}
+                  className="ml-auto text-xs font-medium text-indigo-600 hover:text-indigo-700"
+                >
+                  {nextDoc.title} →
+                </Link>
+              </div>
+            )}
+          </div>
+          {headings.length > 0 && (
+            <aside className="hidden lg:block w-56 text-xs text-slate-500">
+              <div className="sticky top-24 space-y-2">
+                <div className="font-semibold text-slate-600 text-[11px] uppercase tracking-[0.14em]">
+                  On this page
+                </div>
+                <ul className="space-y-1">
+                  {headings.map((heading) => (
+                    <li key={heading.id} className={heading.level === 3 ? 'pl-3' : ''}>
+                      <a href={`#${heading.id}`} className="hover:text-slate-700">
+                        {heading.text}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </aside>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function Docs() {
+  const location = useLocation();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const path = location.pathname.replace(/^\/docs\/?/, '');
+  const parts = path.split('/').filter(Boolean);
+  const categorySlug = parts[0];
+  const slug = parts[1];
+  const currentDoc = categorySlug && slug ? getDocByCategoryAndSlug(categorySlug, slug) : null;
+  const isHome = !categorySlug;
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-900">
+      <header className="border-b border-slate-200 bg-white/90 backdrop-blur-xl">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+          <Link to="/" className="flex items-center gap-2 group">
+            <div className="h-8 w-8 rounded-md bg-slate-900 text-white flex items-center justify-center">
+              <span className="text-xs font-bold">OF</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="font-heading font-semibold text-sm tracking-tight text-slate-900 group-hover:text-slate-700 transition-colors">
+                OpsFlow
+              </span>
+              <span className="text-[11px] text-slate-500">Documentation</span>
+            </div>
+          </Link>
+          <div className="hidden md:flex items-center gap-4 flex-1 justify-center max-w-md">
+            <div className="flex items-center gap-2 w-full px-3 py-1.5 rounded-full border border-slate-200 bg-slate-50">
+              <Search size={14} className="text-slate-400" />
+              <input
+                type="search"
+                placeholder="Search documentation..."
+                className="flex-1 bg-transparent outline-none placeholder:text-slate-400 text-xs"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-3 text-xs">
             <div className="hidden sm:flex items-center gap-3">
-              <Link to="/login" className="text-slate-200/80 hover:text-white">
+              <Link to="/login" className="text-slate-600 hover:text-slate-900">
                 Log in
               </Link>
               <Link
                 to="/signup"
-                className="px-3 py-1.5 rounded-full bg-grad-main text-white font-medium text-xs"
+                className="px-3 py-1.5 rounded-full bg-slate-900 text-white font-medium"
               >
                 Start free
               </Link>
             </div>
             <button
               type="button"
-              className="inline-flex md:hidden h-9 w-9 items-center justify-center rounded-md border border-slate-700 bg-slate-900/70 text-slate-100 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+              className="inline-flex md:hidden h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-800 hover:bg-slate-100"
               aria-label="Toggle navigation"
               aria-expanded={mobileOpen}
               onClick={() => setMobileOpen((open) => !open)}
             >
-              {mobileOpen ? <X size={18} /> : <Menu size={18} />}
+              {mobileOpen ? <X size={16} /> : <Menu size={16} />}
             </button>
           </div>
         </div>
-      </header>
-      {mobileOpen && (
-        <div className="md:hidden border-b border-slate-800/80 bg-slate-950/95 backdrop-blur-xl shadow-[0_18px_45px_rgba(15,23,42,0.9)]">
-          <div className="container mx-auto px-6 py-3 space-y-2">
-            <Link
-              to="/#features-future"
-              className="flex items-center rounded-lg px-3 py-2 text-sm text-slate-200/90 hover:text-white hover:bg-slate-800/80"
-              onClick={() => setMobileOpen(false)}
-            >
-              Features
-            </Link>
-            <Link
-              to="/#integrations"
-              className="flex items-center rounded-lg px-3 py-2 text-sm text-slate-200/90 hover:text-white hover:bg-slate-800/80"
-              onClick={() => setMobileOpen(false)}
-            >
-              Integrations
-            </Link>
-            <Link
-              to="/pricing"
-              className="flex items-center rounded-lg px-3 py-2 text-sm text-slate-200/90 hover:text-white hover:bg-slate-800/80"
-              onClick={() => setMobileOpen(false)}
-            >
-              Pricing
-            </Link>
-            <Link
-              to="/docs"
-              className="flex items-center rounded-lg px-3 py-2 text-sm text-slate-200/90 hover:text-white hover:bg-slate-800/80"
-              onClick={() => setMobileOpen(false)}
-            >
-              Docs
-            </Link>
-            <div className="pt-3 mt-1 border-t border-slate-800/80 space-y-3">
+        {mobileOpen && (
+          <div className="md:hidden border-t border-slate-200 bg-white">
+            <div className="max-w-6xl mx-auto px-4 py-3 space-y-2 text-sm">
+              <Link
+                to="/docs"
+                className="block px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-50"
+                onClick={() => setMobileOpen(false)}
+              >
+                Docs home
+              </Link>
               <Link
                 to="/login"
-                className="flex items-center rounded-lg px-3 py-2 text-sm text-slate-200/90 hover:text-white hover:bg-slate-800/80"
+                className="block px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-50"
                 onClick={() => setMobileOpen(false)}
               >
                 Log in
               </Link>
-              <Link to="/signup" onClick={() => setMobileOpen(false)}>
-                <button className="w-full h-11 rounded-full bg-grad-main text-sm font-medium text-white shadow-lg">
-                  Start free
-                </button>
+              <Link
+                to="/signup"
+                className="block px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-50"
+                onClick={() => setMobileOpen(false)}
+              >
+                Start free
               </Link>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </header>
       <main className="relative">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.12),_transparent_55%),radial-gradient(circle_at_bottom,_rgba(129,140,248,0.18),_transparent_60%)] pointer-events-none" />
-        <div className="relative container mx-auto px-6 py-12 lg:py-16">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.08),_transparent_55%),radial-gradient(circle_at_bottom,_rgba(14,165,233,0.09),_transparent_60%)] pointer-events-none" />
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-10 lg:py-14">
           <div className="grid grid-cols-1 lg:grid-cols-[260px,minmax(0,1fr)] gap-10 lg:gap-16">
-            <aside className="lg:pt-4">
-              <div className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.25em] text-slate-400 mb-4">
-                <BookOpen size={14} />
-                <span>Docs</span>
-              </div>
-              <div className="text-sm text-slate-300 mb-6 max-w-xs">
-                Everything you need to wire OpsFlow into a real customer operations stack.
-              </div>
-              <nav className="space-y-1 text-sm text-slate-300">
-                <a
-                  href="#getting-started"
-                  className="block rounded-md px-3 py-1.5 hover:bg-slate-800/80 hover:text-white"
-                >
-                  Getting started
-                </a>
-                <a
-                  href="#email-forwarding"
-                  className="block rounded-md px-3 py-1.5 hover:bg-slate-800/80 hover:text-white"
-                >
-                  Email forwarding
-                </a>
-                <a
-                  href="#api"
-                  className="block rounded-md px-3 py-1.5 hover:bg-slate-800/80 hover:text-white"
-                >
-                  API reference
-                </a>
-                <a
-                  href="#integrations"
-                  className="block rounded-md px-3 py-1.5 hover:bg-slate-800/80 hover:text-white"
-                >
-                  Integration guides
-                </a>
-                <a
-                  href="#faq"
-                  className="block rounded-md px-3 py-1.5 hover:bg-slate-800/80 hover:text-white"
-                >
-                  FAQ
-                </a>
-              </nav>
-            </aside>
-            <div className="space-y-14">
-              <section id="getting-started" className="space-y-4">
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold text-cyan-300 uppercase tracking-[0.2em]">
-                    Overview
-                  </p>
-                  <h1 className="text-3xl md:text-4xl font-heading font-bold text-white">
-                    Getting started with OpsFlow
-                  </h1>
-                </div>
-                <p className="text-sm text-slate-300 max-w-2xl">
-                  OpsFlow is a customer operations platform built around tickets, AI triage, and a
-                  clean REST API. This page walks you through wiring the product into your stack in
-                  minutes.
-                </p>
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 space-y-4">
-                  <div>
-                    <div className="mb-2 text-xs font-semibold text-slate-300">Base URL</div>
-                    <code className="block bg-black/40 px-3 py-2 rounded text-xs text-slate-100">
-                      {import.meta.env.VITE_API_URL || 'http://localhost:3000'}
-                    </code>
-                  </div>
-                  <ol className="list-decimal list-inside space-y-1 text-xs text-slate-300">
-                    <li>Create a tenant and first admin via the in‑product Sign up flow.</li>
-                    <li>Grab the API URL from your environment or this page.</li>
-                    <li>Call the auth endpoints from your backend to obtain a bearer token.</li>
-                    <li>
-                      Use the tickets API to push events from your app, CRM, or support inbox.
-                    </li>
-                  </ol>
-                </div>
-              </section>
-              <section id="email-forwarding" className="space-y-4">
-                <h2 className="text-xl font-heading font-semibold text-white">
-                  Email forwarding guide
-                </h2>
-                <p className="text-sm text-slate-300 max-w-2xl">
-                  You can pipe customer emails straight into OpsFlow so every support conversation
-                  becomes a ticket, with AI triage and assignment applied automatically.
-                </p>
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 space-y-3 text-sm text-slate-300">
-                  <ol className="list-decimal list-inside space-y-1">
-                    <li>
-                      In OpsFlow, open{' '}
-                      <span className="font-medium text-slate-100">Settings → Inbound email</span>{' '}
-                      and copy your tenant&apos;s inbound address.
-                    </li>
-                    <li>
-                      In your email provider (Google Workspace, Microsoft 365, etc.), create a group
-                      or alias such as{' '}
-                      <code className="bg-black/40 px-1 rounded text-xs">support@</code>.
-                    </li>
-                    <li>
-                      Configure forwarding from that address to the inbound address you copied from
-                      OpsFlow.
-                    </li>
-                    <li>
-                      Send a test email. You should see a new ticket in the{' '}
-                      <span className="font-medium text-slate-100">Tickets</span> view within a few
-                      seconds.
-                    </li>
-                  </ol>
-                  <p className="text-xs text-slate-400">
-                    Forwarding happens at the envelope level only. Authentication and spam filtering
-                    stay in your email provider.
-                  </p>
-                </div>
-              </section>
-              <section id="api" className="space-y-6">
-                <div className="space-y-3">
-                  <h2 className="text-xl font-heading font-semibold text-white">API reference</h2>
-                  <p className="text-sm text-slate-300 max-w-2xl">
-                    The OpsFlow API is small on purpose: a few endpoints to authenticate, create
-                    tickets, and run AI workflows. All endpoints are tenant‑scoped and use JSON over
-                    HTTPS.
-                  </p>
-                </div>
-                <div className="space-y-6">
-                  <div className="space-y-3">
-                    <h3 className="text-sm font-heading font-semibold text-slate-100">
-                      Authentication
-                    </h3>
-                    <p className="text-xs text-slate-300 max-w-2xl">
-                      Authentication uses short‑lived bearer tokens. Call these endpoints from a
-                      trusted environment (your backend, a secure worker, or an integration
-                      service).
-                    </p>
-                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 space-y-3 text-sm text-slate-300">
-                      <ul className="space-y-1">
-                        <li>
-                          <code className="text-xs bg-black/50 px-2 py-1 rounded">
-                            POST /auth/signup
-                          </code>{' '}
-                          create tenant and first admin user
-                        </li>
-                        <li>
-                          <code className="text-xs bg-black/50 px-2 py-1 rounded">
-                            POST /auth/login
-                          </code>{' '}
-                          exchange email and password for tokens
-                        </li>
-                        <li>
-                          <code className="text-xs bg-black/50 px-2 py-1 rounded">
-                            GET /auth/me
-                          </code>{' '}
-                          fetch the current user
-                        </li>
-                      </ul>
-                      <div>
-                        <div className="text-xs font-medium text-slate-400 mb-2">
-                          Authorization header
-                        </div>
-                        <pre className="text-xs bg-black/60 rounded-xl p-3 overflow-auto text-slate-100">
-                          {`Authorization: Bearer <access_token>`}
-                        </pre>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <h3 className="text-sm font-heading font-semibold text-slate-100">
-                      Tickets and AI workflows
-                    </h3>
-                    <p className="text-xs text-slate-300 max-w-2xl">
-                      Tickets are the core unit in OpsFlow. You can create them from any system,
-                      then invoke AI workflows to triage, classify, and draft replies. The same
-                      analysis powers the in‑product AI panel.
-                    </p>
-                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 space-y-3 text-sm text-slate-300">
-                      <ul className="space-y-1">
-                        <li>
-                          <code className="text-xs bg-black/50 px-2 py-1 rounded">
-                            POST /tickets
-                          </code>{' '}
-                          create a ticket
-                        </li>
-                        <li>
-                          <code className="text-xs bg-black/50 px-2 py-1 rounded">
-                            POST /tickets/:id/workflows/triage
-                          </code>{' '}
-                          run AI triage on a ticket
-                        </li>
-                        <li>
-                          <code className="text-xs bg-black/50 px-2 py-1 rounded">
-                            GET /tickets/:id/workflows
-                          </code>{' '}
-                          inspect workflow history and AI outputs
-                        </li>
-                        <li>
-                          <code className="text-xs bg-black/50 px-2 py-1 rounded">
-                            POST /tickets/:id/reply
-                          </code>{' '}
-                          attach and send a reply
-                        </li>
-                      </ul>
-                      <p className="text-xs text-slate-400">
-                        All endpoints respect the same role model you see in the dashboard (admin vs
-                        member) and return standard HTTP status codes on error.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </section>
-              <section id="integrations" className="space-y-4">
-                <h2 className="text-xl font-heading font-semibold text-white">
-                  Integration guides
-                </h2>
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 space-y-3 text-sm text-slate-300">
-                  <div>
-                    <div className="text-xs font-semibold text-slate-100 mb-1">
-                      Backend services
-                    </div>
+            <DocsSidebar currentDoc={currentDoc} />
+            <div className="min-w-0">
+              {isHome && <DocsHome search={searchQuery} onSearchChange={setSearchQuery} />}
+              {!isHome && currentDoc && <DocsArticlePage doc={currentDoc} />}
+              {!isHome && !currentDoc && (
+                <div className="space-y-4">
+                  <DocsBreadcrumbs doc={null} />
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-6 text-sm text-amber-800">
+                    <div className="font-heading font-semibold mb-1">Article not found</div>
                     <p className="text-xs">
-                      Use your existing job workers or API layer to push important events into
-                      OpsFlow as tickets. For example, failed payments, uptime incidents, or key
-                      account changes.
+                      This URL does not match any documentation article yet. Go back to the docs
+                      homepage to browse available guides.
                     </p>
-                  </div>
-                  <div>
-                    <div className="text-xs font-semibold text-slate-100 mb-1">
-                      CRMs and helpdesks
+                    <div className="mt-4">
+                      <Link
+                        to="/docs"
+                        className="inline-flex items-center text-xs font-medium text-indigo-600 hover:text-indigo-700"
+                      >
+                        ← Back to docs
+                      </Link>
                     </div>
-                    <p className="text-xs">
-                      Mirror tickets into your CRM by listening for ticket webhooks and writing a
-                      small adapter that syncs status, priority, and account metadata.
-                    </p>
-                  </div>
-                  <div>
-                    <div className="text-xs font-semibold text-slate-100 mb-1">Internal tools</div>
-                    <p className="text-xs">
-                      Build lightweight internal tools on top of the OpsFlow API to give sales,
-                      product, or leadership curated views of customer issues and AI insights.
-                    </p>
                   </div>
                 </div>
-              </section>
-              <section id="faq" className="space-y-4">
-                <h2 className="text-xl font-heading font-semibold text-white">FAQ</h2>
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 space-y-3 text-sm text-slate-300">
-                  <div>
-                    <div className="text-xs font-semibold text-slate-100 mb-1">
-                      Is the API stable?
-                    </div>
-                    <p className="text-xs">
-                      Yes. The surface area is intentionally small and changes are rolled out
-                      backwards‑compatible whenever possible.
-                    </p>
-                  </div>
-                  <div>
-                    <div className="text-xs font-semibold text-slate-100 mb-1">
-                      How does authentication expire?
-                    </div>
-                    <p className="text-xs">
-                      Access tokens are short‑lived. Your integration should be prepared to refresh
-                      or re‑authenticate when you receive 401 responses.
-                    </p>
-                  </div>
-                  <div>
-                    <div className="text-xs font-semibold text-slate-100 mb-1">
-                      Can I use OpsFlow in multiple environments?
-                    </div>
-                    <p className="text-xs">
-                      Yes. Use separate tenants and API keys for staging and production, and wire
-                      each environment to its own OpsFlow workspace.
-                    </p>
-                  </div>
-                </div>
-              </section>
+              )}
             </div>
           </div>
         </div>
