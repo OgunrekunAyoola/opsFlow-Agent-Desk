@@ -4,6 +4,7 @@ import { requireAuth } from '../middleware/auth';
 import Ticket from '../models/Ticket';
 import TicketReply from '../models/TicketReply';
 import User from '../models/User';
+import UserAction from '../models/UserAction';
 
 const router = Router();
 
@@ -35,13 +36,32 @@ router.get('/stats', requireAuth, async (req, res) => {
     // 4. Total Users (for team stats)
     const totalUsers = await User.countDocuments({ tenantId });
 
-    // Format stats for frontend
+    const aiTriageRuns = await UserAction.countDocuments({
+      tenantId,
+      type: 'ai_triage_run',
+    }).exec();
+
+    const aiSuggestionUses = await UserAction.countDocuments({
+      tenantId,
+      type: 'ai_suggestion_used',
+    }).exec();
+
+    const autoReplies = await UserAction.countDocuments({
+      tenantId,
+      type: 'auto_reply_sent',
+    }).exec();
+
     const stats = {
       totalTickets: statusCounts.reduce((acc, curr) => acc + curr.count, 0),
       byStatus: statusCounts.reduce((acc, curr) => ({ ...acc, [curr._id]: curr.count }), {}),
       byPriority: priorityCounts.reduce((acc, curr) => ({ ...acc, [curr._id]: curr.count }), {}),
       recentTickets,
       totalUsers,
+      ai: {
+        triageRuns: aiTriageRuns,
+        suggestionsUsed: aiSuggestionUses,
+        autoReplies,
+      },
     };
 
     res.json(stats);

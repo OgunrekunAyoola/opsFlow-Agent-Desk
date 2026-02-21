@@ -55,18 +55,20 @@ async function main() {
   const ts = Date.now();
   const email = `smoke+${ts}@example.com`;
 
-  const signup = await req('POST', '/auth/signup', {
-    tenantName: 'SmokeCo',
-    name: 'Smoke Tester',
+  const signUpResponse = await req('POST', '/api/auth/sign-up/email', {
     email,
     password: 'Passw0rd!',
+    name: 'Smoke Tester',
   });
 
-  if (!signup || !signup.access_token) {
-    throw new Error('signup failed');
+  if (!signUpResponse || !signUpResponse.user || !signUpResponse.session) {
+    throw new Error('sign-up failed');
   }
 
-  const headers = { Authorization: `Bearer ${signup.access_token}` };
+  const cookieHeader = signUpResponse.session.cookies
+    ? signUpResponse.session.cookies.join('; ')
+    : '';
+  const headers = cookieHeader ? { Cookie: cookieHeader } : {};
 
   const ticket = await req(
     'POST',

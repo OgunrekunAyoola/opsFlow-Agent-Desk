@@ -9,6 +9,9 @@ export class GeminiLLMService {
   private genAI: GoogleGenerativeAI | null = null;
   private model: any = null;
   private disabledUntil: number | null = null;
+  private failureCount = 0;
+  private circuitState: 'closed' | 'open' | 'half-open' = 'closed';
+  private nextAttemptAt: number | null = null;
 
   constructor() {
     if (API_KEY) {
@@ -25,23 +28,61 @@ export class GeminiLLMService {
   private async generateJSON(prompt: string): Promise<any> {
     if (!this.model) throw new Error('Gemini API Key is not configured.');
 
-    try {
-      if (this.disabledUntil && Date.now() < this.disabledUntil) {
-        throw new Error('LLM temporarily disabled');
+    const now = Date.now();
+    if (this.circuitState === 'open') {
+      if (this.nextAttemptAt && now < this.nextAttemptAt) {
+        throw new Error('LLM circuit breaker open');
       }
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
-      return JSON.parse(text);
-    } catch (error: any) {
-      console.error('Gemini generation error:', error);
-      const msg = String(error?.message || error);
-      const rateLimited = (error?.status === 429) || /quota|rate/i.test(msg);
-      if (rateLimited) {
-        this.disabledUntil = Date.now() + 5 * 60 * 1000;
-      }
-      throw error;
+      this.circuitState = 'half-open';
+    } else if (
+      this.circuitState === 'half-open' &&
+      this.nextAttemptAt &&
+      now < this.nextAttemptAt
+    ) {
+      throw new Error('LLM circuit breaker half-open');
     }
+
+    if (this.disabledUntil && now < this.disabledUntil) {
+      throw new Error('LLM temporarily disabled');
+    }
+
+    const maxAttempts = 4;
+    let attempt = 0;
+    let lastError: any;
+
+    while (attempt < maxAttempts) {
+      attempt += 1;
+      try {
+        const result = await this.model.generateContent(prompt);
+        const response = await result.response;
+        const text = response.text();
+        const parsed = JSON.parse(text);
+        this.failureCount = 0;
+        this.circuitState = 'closed';
+        this.nextAttemptAt = null;
+        return parsed;
+      } catch (error: any) {
+        lastError = error;
+        console.error('Gemini generation error:', error);
+        const msg = String(error?.message || error);
+        const rateLimited = error?.status === 429 || /quota|rate/i.test(msg);
+        if (rateLimited) {
+          this.disabledUntil = Date.now() + 5 * 60 * 1000;
+        }
+        this.failureCount += 1;
+        if (this.failureCount >= 5) {
+          this.circuitState = 'open';
+          this.nextAttemptAt = Date.now() + 5 * 60 * 1000;
+        }
+        if (attempt >= maxAttempts) {
+          break;
+        }
+        const delayMs = 1000 * 2 ** (attempt - 1);
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+
+    throw lastError;
   }
 
   async classifyTicket(

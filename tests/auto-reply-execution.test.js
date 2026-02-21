@@ -12,15 +12,13 @@ async function run() {
   const adminEmail = `auto-reply-admin-${ts}@test.com`;
   const adminPassword = 'Password123!';
 
-  const signup = await axios.post(`${API_URL}/auth/signup`, {
-    tenantName: 'AutoReply Corp',
-    name: 'Admin',
+  const signup = await axios.post(`${API_URL}/api/auth/sign-up/email`, {
     email: adminEmail,
     password: adminPassword,
+    name: 'Admin',
   });
-
-  const token = signup.data.access_token;
-  const auth = { headers: { Authorization: `Bearer ${token}` } };
+  const cookieHeader = (signup.headers['set-cookie'] || []).join('; ');
+  const auth = { headers: { Cookie: cookieHeader } };
 
   await axios.patch(
     `${API_URL}/auth/auto-reply-settings`,
@@ -50,11 +48,7 @@ async function run() {
   const ticketId = t.data._id;
   if (!ticketId) throw new Error('ticket create failed');
 
-  const wf = await axios.post(
-    `${API_URL}/tickets/${ticketId}/workflows/triage`,
-    {},
-    auth,
-  );
+  const wf = await axios.post(`${API_URL}/tickets/${ticketId}/workflows/triage`, {}, auth);
 
   if (wf.data.run?.status !== 'succeeded') {
     throw new Error('workflow failed');
@@ -89,4 +83,3 @@ if (require.main === module) {
       process.exit(1);
     });
 }
-

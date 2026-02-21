@@ -5,11 +5,17 @@ export interface ITenant extends Document {
   slug?: string;
   inboundAddress?: string;
   inboundSecret?: string;
+  ingestApiKey?: string;
   supportEmail?: string;
   autoReplyEnabled?: boolean;
   autoReplyConfidenceThreshold?: number;
   autoReplySafeCategories?: string[];
   lastInboundAt?: Date;
+  zendeskSubdomain?: string;
+  zendeskClientId?: string;
+  zendeskToken?: string;
+  zendeskRefreshToken?: string;
+  zendeskTokenExpiresAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -20,6 +26,7 @@ const TenantSchema: Schema = new Schema(
     slug: { type: String, unique: true, sparse: true },
     inboundAddress: { type: String, unique: true, sparse: true },
     inboundSecret: { type: String, unique: true, sparse: true },
+    ingestApiKey: { type: String, unique: true, sparse: true },
     supportEmail: { type: String },
     autoReplyEnabled: { type: Boolean, default: false },
     autoReplyConfidenceThreshold: { type: Number, default: 0.9 },
@@ -28,6 +35,11 @@ const TenantSchema: Schema = new Schema(
       default: ['general', 'feature_request'],
     },
     lastInboundAt: { type: Date },
+    zendeskSubdomain: { type: String },
+    zendeskClientId: { type: String },
+    zendeskToken: { type: String },
+    zendeskRefreshToken: { type: String },
+    zendeskTokenExpiresAt: { type: Date },
   },
   { timestamps: true },
 );

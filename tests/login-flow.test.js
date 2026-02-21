@@ -12,41 +12,21 @@ async function run() {
   const adminEmail = `admin-${ts}@test.com`;
   const adminPassword = 'Password123!';
 
-  // Signup
-  const signup = await axios.post(`${API_URL}/auth/signup`, {
-    tenantName: 'LoginFlow Corp',
+  const signup = await axios.post(`${API_URL}/api/auth/sign-up/email`, {
+    email: adminEmail,
+    password: adminPassword,
     name: 'Admin',
-    email: adminEmail,
-    password: adminPassword,
   });
-  const access1 = signup.data.access_token;
-  if (!access1) throw new Error('signup missing access_token');
+  if (!signup.data.user?.email) throw new Error('signup missing user');
 
-  // me with access token
-  const me1 = await axios.get(`${API_URL}/auth/me`, {
-    headers: { Authorization: `Bearer ${access1}` },
-  });
-  if (!me1.data.user?.email) throw new Error('me failed after signup');
-
-  // login to get refresh cookie
-  const login = await axios.post(`${API_URL}/auth/login`, {
-    email: adminEmail,
-    password: adminPassword,
-  });
-  const access2 = login.data.access_token;
-  if (!access2) throw new Error('login missing access_token');
-  const setCookie = login.headers['set-cookie'] || [];
+  const setCookie = signup.headers['set-cookie'] || [];
   const cookieHeader = Array.isArray(setCookie) ? setCookie.join('; ') : '';
-  if (!cookieHeader.includes('refresh_token')) throw new Error('refresh cookie missing');
+  if (!cookieHeader) throw new Error('missing session cookies after sign-up');
 
-  // refresh using cookie
-  const refresh = await axios.post(
-    `${API_URL}/auth/refresh`,
-    {},
-    { headers: { Cookie: cookieHeader } },
-  );
-  const access3 = refresh.data.access_token;
-  if (!access3) throw new Error('refresh missing access_token');
+  const me = await axios.get(`${API_URL}/auth/me`, {
+    headers: { Cookie: cookieHeader },
+  });
+  if (!me.data.user?.email) throw new Error('me failed after signup');
 
   console.log('Login Flow OK');
 }

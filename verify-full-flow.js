@@ -16,7 +16,7 @@ async function runTest() {
   const timestamp = Date.now();
   const adminEmail = `admin-${timestamp}@test.com`;
   const adminPassword = 'Password123!';
-  let token = '';
+  let cookieHeader = '';
   let ticketId = '';
   let tenantId = '';
   let token2 = '';
@@ -27,14 +27,14 @@ async function runTest() {
   // 1. Signup
   try {
     console.log('1. Testing Signup... ');
-    const res = await axios.post(`${API_URL}/auth/signup`, {
-      tenantName: 'Test Corp',
-      name: 'Test Admin',
+    const res = await axios.post(`${API_URL}/api/auth/sign-up/email`, {
       email: adminEmail,
       password: adminPassword,
+      name: 'Test Admin',
     });
-    token = res.data.access_token;
-    if (!token) throw new Error('No token returned');
+    const setCookie = res.headers['set-cookie'] || [];
+    cookieHeader = Array.isArray(setCookie) ? setCookie.join('; ') : '';
+    if (!cookieHeader) throw new Error('No cookies returned');
     console.log('✅ OK');
   } catch (err) {
     console.log('❌ FAILED');
@@ -47,7 +47,7 @@ async function runTest() {
     process.exit(1);
   }
 
-  const headers = { Authorization: `Bearer ${token}` };
+  const headers = { Cookie: cookieHeader };
 
   // 2. Initial Dashboard Check
   try {
@@ -197,15 +197,13 @@ async function runTest() {
 
   try {
     console.log('10. Creating second tenant and ticket... ');
-    const signup2 = await axios.post(`${API_URL}/auth/signup`, {
-      tenantName: 'Test Corp B',
-      name: 'Test Admin B',
+    const signup2 = await axios.post(`${API_URL}/api/auth/sign-up/email`, {
       email: `admin-b-${timestamp}@test.com`,
       password: adminPassword,
+      name: 'Test Admin B',
     });
-    token2 = signup2.data.access_token;
-    if (!token2) throw new Error('No token for second tenant');
-    const headers2 = { Authorization: `Bearer ${token2}` };
+    const cookies2 = (signup2.headers['set-cookie'] || []).join('; ');
+    const headers2 = { Cookie: cookies2 };
     const create2 = await axios.post(
       `${API_URL}/tickets`,
       {

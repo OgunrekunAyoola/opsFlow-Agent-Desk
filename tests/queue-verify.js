@@ -18,15 +18,14 @@ async function run() {
   let ticketId = '';
   console.log('Queue Verify');
 
-  // Signup
-  const signup = await axios.post(`${API_URL}/auth/signup`, {
-    tenantName: 'Queue Corp',
-    name: 'Admin',
+  const signup = await axios.post(`${API_URL}/api/auth/sign-up/email`, {
     email: adminEmail,
     password: adminPassword,
+    name: 'Admin',
   });
-  token = signup.data.access_token;
-  const headers = { Authorization: `Bearer ${token}` };
+  const setCookie = signup.headers['set-cookie'] || [];
+  const cookieHeader = Array.isArray(setCookie) ? setCookie.join('; ') : '';
+  const headers = { Cookie: cookieHeader };
 
   // Create ticket
   const t = await axios.post(

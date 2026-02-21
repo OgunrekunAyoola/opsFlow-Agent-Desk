@@ -14,26 +14,22 @@ async function run() {
   const adminBEmail = `tenantB-${ts}@test.com`;
   const adminPassword = 'Password123!';
 
-  const signupA = await axios.post(`${API_URL}/auth/signup`, {
-    tenantName: 'Tenant A',
-    name: 'Admin A',
+  const signupA = await axios.post(`${API_URL}/api/auth/sign-up/email`, {
     email: adminAEmail,
     password: adminPassword,
+    name: 'Admin A',
   });
-  const tokenA = signupA.data.access_token;
-  if (!tokenA) throw new Error('Tenant A signup missing access_token');
+  const cookieA = (signupA.headers['set-cookie'] || []).join('; ');
 
-  const signupB = await axios.post(`${API_URL}/auth/signup`, {
-    tenantName: 'Tenant B',
-    name: 'Admin B',
+  const signupB = await axios.post(`${API_URL}/api/auth/sign-up/email`, {
     email: adminBEmail,
     password: adminPassword,
+    name: 'Admin B',
   });
-  const tokenB = signupB.data.access_token;
-  if (!tokenB) throw new Error('Tenant B signup missing access_token');
+  const cookieB = (signupB.headers['set-cookie'] || []).join('; ');
 
-  const authA = { headers: { Authorization: `Bearer ${tokenA}` } };
-  const authB = { headers: { Authorization: `Bearer ${tokenB}` } };
+  const authA = { headers: { Cookie: cookieA } };
+  const authB = { headers: { Cookie: cookieB } };
 
   const ticketASubject = `Tenant A Ticket ${ts}`;
   const ticketBSubject = `Tenant B Ticket ${ts}`;
@@ -102,4 +98,3 @@ if (require.main === module) {
       process.exit(1);
     });
 }
-

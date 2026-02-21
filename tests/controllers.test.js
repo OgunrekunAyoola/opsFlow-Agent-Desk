@@ -15,15 +15,14 @@ async function run() {
   let memberToken = '';
   console.log('Controllers Test');
 
-  // Signup admin
-  const signup = await axios.post(`${API_URL}/auth/signup`, {
-    tenantName: 'Controllers Corp',
-    name: 'Admin',
+  const signup = await axios.post(`${API_URL}/api/auth/sign-up/email`, {
     email: adminEmail,
     password: adminPassword,
+    name: 'Admin',
   });
-  adminToken = signup.data.access_token;
-  const authAdmin = { headers: { Authorization: `Bearer ${adminToken}` } };
+  const setCookieAdmin = signup.headers['set-cookie'] || [];
+  const adminCookie = Array.isArray(setCookieAdmin) ? setCookieAdmin.join('; ') : '';
+  const authAdmin = { headers: { Cookie: adminCookie } };
 
   // Create member via /users (admin-only)
   await axios.post(
@@ -32,13 +31,17 @@ async function run() {
     authAdmin,
   );
 
-  // Login as member
-  const loginMember = await axios.post(`${API_URL}/auth/login`, {
-    email: memberEmail,
-    password: 'Password123!',
-  });
-  memberToken = loginMember.data.access_token;
-  const authMember = { headers: { Authorization: `Bearer ${memberToken}` } };
+  const loginMember = await axios.post(
+    `${API_URL}/api/auth/sign-in/email`,
+    {
+      email: memberEmail,
+      password: 'Password123!',
+    },
+    { withCredentials: true },
+  );
+  const setCookieMember = loginMember.headers['set-cookie'] || [];
+  const memberCookie = Array.isArray(setCookieMember) ? setCookieMember.join('; ') : '';
+  const authMember = { headers: { Cookie: memberCookie } };
 
   // Users list should be forbidden for member
   let forbiddenOk = false;

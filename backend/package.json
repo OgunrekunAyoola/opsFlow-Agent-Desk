@@ -17,23 +17,23 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "bcryptjs": "^2.4.3",
+    "better-auth": "^1.4.18",
+    "bullmq": "^5.7.10",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "express-rate-limit": "^7.5.1",
     "helmet": "^7.2.0",
-    "jsonwebtoken": "^9.0.3",
-    "mongoose": "^8.6.0",
-    "bullmq": "^5.7.10",
-    "ioredis": "^5.3.2"
+    "ioredis": "^5.3.2",
+    "mongodb": "^7.1.0",
+    "mongoose": "^8.6.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
-    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^25.2.3",
     "nodemon": "^3.1.11",
     "ts-node": "^10.9.2",

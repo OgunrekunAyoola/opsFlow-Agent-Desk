@@ -15,22 +15,17 @@ async function run() {
   let ticketId = '';
   console.log('Endpoints Test');
 
-  // Signup
-  const signup = await axios.post(`${API_URL}/auth/signup`, {
-    tenantName: 'Endpoints Corp',
-    name: 'Admin',
+  const signup = await axios.post(`${API_URL}/api/auth/sign-up/email`, {
     email: adminEmail,
     password: adminPassword,
+    name: 'Admin',
   });
-  adminToken = signup.data.access_token;
-  inboundAddress = signup.data.inbound?.address;
-  const auth = { headers: { Authorization: `Bearer ${adminToken}` } };
+  adminToken = '';
+  inboundAddress = '';
+  const setCookie = signup.headers['set-cookie'] || [];
+  const cookieHeader = Array.isArray(setCookie) ? setCookie.join('; ') : '';
+  const auth = { headers: { Cookie: cookieHeader } };
 
-  // Forgot password (email flow)
-  const forgot = await axios.post(`${API_URL}/auth/forgot-password`, { email: adminEmail });
-  if (!forgot.data.message) throw new Error('forgot-password failed');
-
-  // Auth/me
   const me = await axios.get(`${API_URL}/auth/me`, auth);
   if (!me.data.user?.email) throw new Error('me failed');
 

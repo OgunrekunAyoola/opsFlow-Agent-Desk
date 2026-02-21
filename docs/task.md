@@ -354,6 +354,51 @@
 - Add to website as social proof
 - Replace with real case studies once available
 
+### Task 1.30: Implement Generic Ticket Ingestion API & Chat Widget ⚡ P1
+
+- Backend endpoint: `POST /tickets/ingest` (tenant-scoped via API key or secret)
+- Accepts JSON payload: subject, body, customer name/email, channel, externalId/messageId
+- Idempotency: if externalId/messageId already ingested for tenant, return existing ticket
+- Normalize payload to create tickets consistent with email/web-form creation
+- Add `apiKey` field on Tenant model and rotation endpoint
+- Admin settings: show API key, regeneration button, and example cURL in /settings
+- Implement minimal embeddable chat widget that posts to `/tickets/ingest` with channel=`chat`
+- Docs: add "API ingestion & chat widget" article under /docs/setup with copy-paste examples
+- Test: send sample HTTP requests and widget submissions, verify tickets created and de-duplicated
+
+### Task 1.31: Build Knowledge Base & RAG-Powered Suggestions 🎯 P2
+
+- Create KBArticle model: tenantId, title, category, body (markdown), visibility, updatedAt
+- CRUD API routes: list, create, update, delete KB articles (admin-only writes)
+- Next.js pages: /kb (list), /kb/new, /kb/[id] with markdown editor
+- Add basic categories: FAQ, Shipping, Payments, Account, Technical, Other
+- Implement simple indexing layer for KB articles (can be keyword search first, vectors later)
+- Update TicketTriageWorkflow to retrieve top KB articles/snippets and pass into LLM
+- Store article titles/ids used for each suggestion in ticket.aiAnalysis for UI display
+- Test: create KB articles, run AI triage, verify suggestions reference correct sources
+
+### Task 1.32: Add AI Suggestion Panel & Usage Metrics in Ticket UI ⚡ P1
+
+- In ticket detail page, add "AI suggestion" panel with editable suggested reply text
+- Show confidence indicator (low/medium/high) derived from model score
+- Display "Why this answer" and list of KB articles used when available
+- Add "Generate suggestion" button wired to workflow endpoint for on-demand triage
+- Add actions: "Use as is", "Edit then send", "Ignore suggestion"
+- Track suggestion events (used/edited/ignored) using UserAction or dedicated event model
+- Extend /dashboard/metrics to expose AI suggestion usage counts and ratios
+- Frontend dashboard: add cards/charts for AI suggestion usage over time
+- Test: open ticket, generate suggestion, exercise all actions, verify metrics update
+
+### Task 1.33: Align Public Site with v1 Copilot & Free Beta Plan 🎯 P2
+
+- Update landing page copy to emphasize "AI copilot" and human-in-the-loop (no autonomous refunds)
+- Simplify /pricing to a single "Public Beta — Free" plan with usage caps
+- Remove paid per-agent pricing from UI until billing is ready
+- Ensure CTAs use "Start free" / "Sign up free (no credit card)"
+- Add note: "Paid plans coming later — lock in free access now."
+- Confirm /docs getting started flow matches v1 completion criteria from master spec
+- Test: browse /, /pricing, /docs as a new visitor and verify messaging matches v1 scope
+
 ---
 
 # PHASE 2: RELIABILITY & INFRASTRUCTURE (Week 4-5)

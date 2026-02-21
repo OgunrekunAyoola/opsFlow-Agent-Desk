@@ -12,15 +12,14 @@ async function run() {
   const adminEmail = `admin-${ts}@test.com`;
   const adminPassword = 'Password123!';
 
-  // Signup and auth header
-  const signup = await axios.post(`${API_URL}/auth/signup`, {
-    tenantName: 'AiFlow Corp',
-    name: 'Admin',
+  const signup = await axios.post(`${API_URL}/api/auth/sign-up/email`, {
     email: adminEmail,
     password: adminPassword,
+    name: 'Admin',
   });
-  const token = signup.data.access_token;
-  const auth = { headers: { Authorization: `Bearer ${token}` } };
+  const setCookie = signup.headers['set-cookie'] || [];
+  const cookieHeader = Array.isArray(setCookie) ? setCookie.join('; ') : '';
+  const auth = { headers: { Cookie: cookieHeader } };
 
   // Create ticket
   const t = await axios.post(

@@ -8,6 +8,7 @@ import Notification from '../models/Notification';
 import { EmailService } from '../services/EmailService';
 import { emailSendQueue } from '../queue/index';
 import UserAction from '../models/UserAction';
+import Tenant from '../models/Tenant';
 
 const router = Router();
 const frontendBaseUrl = (process.env.FRONTEND_BASE_URL || 'http://localhost:5173').replace(
@@ -149,6 +150,57 @@ router.post('/ingest/email', requireAuth, async (req, res) => {
   const populated = await Ticket.findById(ticket._id).populate('clientId', 'name domain').exec();
   res.status(201).json({ ticket: populated });
 });
+
+router.post('/ingest', async (req, res) => {
+  try {
+    const { subject, body, customerName, customerEmail, externalId, channel } = req.body || {};
+    const apiKey = (req.headers['x-opsflow-key'] as string) || (req.query?.apiKey as string) || '';
+
+    if (!apiKey) {
+      return res.status(401).json({ error: 'missing_api_key' });
+    }
+
+    if (!subject || !body) {
+      return res.status(400).json({ error: 'subject_and_body_required' });
+    }
+
+    const tenant = await Tenant.findOne({ ingestApiKey: apiKey }).exec();
+    if (!tenant) {
+      return res.status(401).json({ error: 'invalid_api_key' });
+    }
+
+    const ticketChannel = channel === 'chat' ? 'web_form' : 'email';
+
+    if (externalId) {
+      const existing = await Ticket.findOne({
+        tenantId: tenant._id,
+        messageId: externalId,
+      }).exec();
+      if (existing) {
+        return res.json({ ticket: existing });
+      }
+    }
+
+    const ticket = await Ticket.create({
+      tenantId: tenant._id,
+      subject,
+      body,
+      messageId: externalId,
+      channel: ticketChannel,
+      customerName,
+      customerEmail,
+      status: 'new',
+      priority: 'medium',
+      category: 'general',
+    });
+
+    const populated = await Ticket.findById(ticket._id).populate('clientId', 'name domain').exec();
+
+    res.status(201).json({ ticket: populated });
+  } catch {
+    res.status(500).json({ error: 'failed_to_ingest_ticket' });
+  }
+});
 // Get ticket details
 router.get('/:id', requireAuth, async (req, res) => {
   const { tenantId } = (req as any).currentUser;
@@ -175,7 +227,7 @@ router.get('/:id', requireAuth, async (req, res) => {
 router.post('/:id/reply', requireAuth, async (req, res) => {
   const { tenantId, userId } = (req as any).currentUser;
   const { id } = req.params;
-  const { body } = req.body;
+  const { body, useAiDraft } = req.body;
 
   if (!body) {
     return res.status(400).json({ error: 'Body is required' });
@@ -218,8 +270,17 @@ router.post('/:id/reply', requireAuth, async (req, res) => {
       userId,
       type: 'ticket_reply',
       subjectId: reply._id,
-      meta: { ticketId: id },
+      meta: { ticketId: id, useAiDraft: !!useAiDraft },
     });
+    if (useAiDraft) {
+      await UserAction.create({
+        tenantId,
+        userId,
+        type: 'ai_suggestion_used',
+        subjectId: reply._id,
+        meta: { ticketId: id },
+      });
+    }
   } catch {}
 
   res.status(201).json(reply);

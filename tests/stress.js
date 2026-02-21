@@ -49,15 +49,14 @@ async function createAdmin(ts) {
   const adminEmail = `admin-stress-${ts}@test.com`;
   const adminPassword = 'Password123!';
   console.log('Phase 1: create admin tenant');
-  const signup = await axios.post(`${API_URL}/auth/signup`, {
-    tenantName: 'Stress Corp',
-    name: 'Admin',
+  const signup = await axios.post(`${API_URL}/api/auth/sign-up/email`, {
     email: adminEmail,
     password: adminPassword,
+    name: 'Admin',
   });
-  const token = signup.data.access_token;
-  if (!token) throw new Error('signup missing access_token');
-  const headers = { Authorization: `Bearer ${token}` };
+  const setCookie = signup.headers['set-cookie'] || [];
+  const cookieHeader = Array.isArray(setCookie) ? setCookie.join('; ') : '';
+  const headers = { Cookie: cookieHeader };
   return { headers, adminEmail, adminPassword };
 }
 
@@ -80,25 +79,20 @@ async function scenarioUsers(ts, headers, totalUsers, concurrency) {
 }
 
 async function scenarioAuth(ts, adminEmail, adminPassword, totalOps, concurrency) {
-  console.log('Scenario: auth (login + refresh)');
+  console.log('Scenario: auth (login)');
   const t0 = Date.now();
   const result = await runWithConcurrency(totalOps, concurrency, async () => {
-    const login = await axios.post(`${API_URL}/auth/login`, {
-      email: adminEmail,
-      password: adminPassword,
-    });
-    const access = login.data.access_token;
-    if (!access) throw new Error('login missing access_token');
+    const login = await axios.post(
+      `${API_URL}/api/auth/sign-in/email`,
+      {
+        email: adminEmail,
+        password: adminPassword,
+      },
+      { withCredentials: true },
+    );
     const setCookie = login.headers['set-cookie'] || [];
     const cookieHeader = Array.isArray(setCookie) ? setCookie.join('; ') : '';
-    if (!cookieHeader.includes('refresh_token')) throw new Error('refresh cookie missing');
-    const refresh = await axios.post(
-      `${API_URL}/auth/refresh`,
-      {},
-      { headers: { Cookie: cookieHeader } },
-    );
-    const access2 = refresh.data.access_token;
-    if (!access2) throw new Error('refresh missing access_token');
+    if (!cookieHeader) throw new Error('login missing cookies');
   });
   const t1 = Date.now();
   console.log(

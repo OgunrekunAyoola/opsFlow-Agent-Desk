@@ -9,6 +9,7 @@ import UserAction from '../models/UserAction';
 import Notification from '../models/Notification';
 import { emailSendQueue } from '../queue/index';
 import { GeminiLLMService } from './GeminiLLMService';
+import KBArticle from '../models/KBArticle';
 
 interface RunOptions {
   tenantId: string;
@@ -102,13 +103,41 @@ export class TicketTriageWorkflow {
       }
       await this.saveStep(run, 'assignee_suggestion', { teamSize: users.length }, assigneeResult);
 
+      const kbQueryText = `${ticket.subject} ${ticket.body}`.trim();
+      let kbArticles: any[] = [];
+      if (kbQueryText.length > 0) {
+        try {
+          kbArticles = await KBArticle.find({
+            tenantId,
+            $or: [
+              { title: { $regex: kbQueryText, $options: 'i' } },
+              { body: { $regex: kbQueryText, $options: 'i' } },
+            ],
+          })
+            .sort({ updatedAt: -1 })
+            .limit(5)
+            .exec();
+        } catch {}
+      }
+
+      const kbContext =
+        kbArticles.length > 0
+          ? kbArticles
+              .map((a, index) => `Article ${index + 1}: ${a.title}\n${a.body.substring(0, 800)}`)
+              .join('\n\n')
+          : '';
+
+      const bodyForReply = kbContext
+        ? `${ticket.body}\n\nRelevant knowledge base:\n${kbContext}`
+        : ticket.body;
+
       // 6. Step: Reply Draft
       let replyResult;
       if (useRealLLM) {
         try {
           replyResult = await this.llmService.draftReply(
             ticket.subject,
-            ticket.body,
+            bodyForReply,
             categoryResult.category,
             priorityResult.priority,
             ticket.customerName || undefined,
@@ -166,6 +195,10 @@ export class TicketTriageWorkflow {
         summary: `AI Triage: Classified as ${categoryResult.category} with ${priorityResult.priority} priority.`,
         sentiment: 'neutral',
         priorityScore: confidence,
+        sources: kbArticles.map((a) => ({
+          id: a._id.toString(),
+          title: a.title,
+        })),
       };
 
       const tenant = await Tenant.findById(tenantId).exec();
@@ -226,6 +259,18 @@ export class TicketTriageWorkflow {
         ticket.status = 'awaiting_reply' as any;
         await ticket.save();
       }
+
+      try {
+        await UserAction.create({
+          tenantId: new mongoose.Types.ObjectId(tenantId),
+          userId: new mongoose.Types.ObjectId(startedByUserId),
+          type: 'ai_triage_run',
+          subjectId: ticket._id,
+          meta: {
+            ticketId,
+          },
+        });
+      } catch {}
 
       // Complete Run
       run.status = 'succeeded';

@@ -1,386 +1,387 @@
-Here’s the updated **Master Spec for Phase 1 of OpsFlow Agent Desk**, now with multi‑tenant structure designed in from the start (single DB, row‑level tenancy). [learn.microsoft](https://learn.microsoft.com/en-us/azure/azure-sql/database/saas-tenancy-app-design-patterns?view=azuresql)
+Here’s a **much more detailed v1 master spec** you can drop into `docs/master-spec-version1.md`. It’s still “copilot only”, but now includes inbound email, teams, metrics dashboard, pricing page (free), docs, and all the little SaaS bits. [zendesk](https://www.zendesk.com/service/help-desk-software/saas-help-desk/)
 
 ---
 
-## 1. v1 Goal & Scope
+# master-spec-version1.md — opsFlow v1 “Smart Copilot”
 
-**Goal**  
-Ship a multi‑tenant‑ready MVP where each agency gets its own workspace: they see their own tickets, run AI ticket triage, and approve/send AI‑drafted replies.
+## 0. Product Vision & Positioning
 
-**Core v1 workflow**
+**Vision**  
+opsFlow v1 is an AI **copilot** for support teams in e‑commerce/fintech‑like businesses. It sits on top of a shared inbox/helpdesk, understands tickets, and drafts answers from the company’s knowledge, but leaves **all sending and actions to humans**. [assembled](https://www.assembled.com/page/ai-copilots-customer-service)
 
-- Ticket Triage & Reply for support/ops emails:
-  - Ingest ticket (simulate email via form/API).
-  - AI classifies, prioritizes, suggests assignee, drafts reply.
-  - Human reviews, edits, and marks as replied.
+**v1 promise to users**
 
-**Multi‑tenant stance (v1)**
+- “Plug opsFlow into your support inbox and get instant, high‑quality answer drafts and smart triage — without changing your tools or giving up control.” [vynta](https://vynta.ai/blog/saas-helpdesk/)
 
-- One shared database, multiple tenants distinguished by `tenant_id` on all tenant‑owned documents. [relevant](https://relevant.software/blog/multi-tenant-architecture/)
-- Each user belongs to exactly one tenant.
-- All queries are scoped by `tenant_id` resolved from the authenticated user.
+**Audience**
 
-**Out of scope (v1)**
+- Small to mid‑size teams (3–30 agents) using basic shared inbox/helpdesk tools.
+- Founders/heads of support who want AI help but don’t trust full autonomy yet. [hiverhq](https://hiverhq.com/blog/best-help-desk-software-features)
 
-- Separate DB/collections per tenant. [seedium](https://seedium.io/blog/how-to-build-multi-tenant-saas-architecture/)
-- Complex org hierarchies, advanced roles, billing.
+**Out of scope in v1**
 
----
-
-## 2. v1 User Stories
-
-1. As a **tenant owner (Admin)**, I can sign up my agency (tenant) and my first user.
-2. As an **Admin**, I can invite/create more users in my agency.
-3. As a **team member** in an agency, I see only my agency’s tickets.
-4. As a **team member**, I can trigger AI triage on a ticket and see suggestions.
-5. As a **team member**, I can edit AI suggestions and save/send a reply.
-6. As a **team member**, I can see workflow history per ticket.
+- No autonomous actions (no refunds, no status changes).
+- No multi‑brand complexity beyond a single workspace.
+- No multi‑tenant SSO/Enterprise features.
+- No paid tiers yet (free only, but instrumented for future pricing). [helpdesk](https://www.helpdesk.com/pricing/)
 
 ---
 
-## 3. Data Model (with Tenant)
+## 1. Functional Requirements
 
-### 3.1 Core multi‑tenant entities
+### 1.1 Channels & Inbound Email
 
-**Tenant (Agency)**
+**Goal:** Make it easy to plug opsFlow into existing workflows via email and a generic API.
 
-- `_id` (ObjectId)
-- `name`
-- `slug` (for future subdomain or URL use, optional)
-- `created_at`, `updated_at`
+**Inbound email**
 
-**User**
+- Each workspace (tenant) gets a unique support email address:
+  - Format: `tenant-slug@inbound.opsflow.ai`.
+- Tenant can set up **forwarding** from their main support email (e.g. `support@brand.com`) to this address, or use it directly. [zendesk](https://www.zendesk.com/service/help-desk-software/saas-help-desk/)
 
-- `_id` (ObjectId)
-- `tenant_id` (Ref → Tenant)
-- `name`
-- `email` (unique per tenant)
-- `password_hash`
-- `role` (`admin` | `member`)
-- `created_at`, `updated_at`
+**Inbound email behavior**
 
-All other main entities are **tenant‑scoped**:
+- Parse incoming email:
+  - Headers: `From`, `To`, `Cc`, `Subject`, `Message-ID`, `In-Reply-To`.
+  - Body: HTML and plain text; prefer plain text for analysis.
+- Create or update Ticket:
+  - If `In-Reply-To` or `References` matches an existing ticket → append as a message in the same thread.
+  - Else → create a new Ticket.
 
-**Ticket**
+**Generic API ingestion**
 
-- `_id` (ObjectId)
-- `tenant_id` (Ref → Tenant)
-- `subject`
-- `body` (text)
-- `channel` (`email`, `web_form`)
-- `status` (`new`, `triaged`, `awaiting_reply`, `replied`, `closed`)
-- `priority` (`low`, `medium`, `high`, `urgent`)
-- `category` (`bug`, `feature_request`, `billing`, `general`, `other`)
-- `customer_name` (nullable)
-- `customer_email` (nullable)
-- `assignee_id` (nullable, Ref → User)
-- `created_by_id` (nullable Ref → User)
-- `created_at`, `updated_at`
+- For helpdesks or backends that want to push tickets directly:
+  - `POST /api/tickets/ingest` with JSON payload (tenant API key).
+  - Same normalization as email ingestion. [vynta](https://vynta.ai/blog/saas-helpdesk/)
 
-**TicketReply**
+**Optional chat widget (basic)**
 
-- `_id` (ObjectId)
-- `tenant_id` (Ref → Tenant)
-- `ticket_id` (Ref → Ticket)
-- `author_type` (`ai`, `human`)
-- `author_id` (nullable Ref → User when human)
-- `body` (text)
-- `created_at`
-
-**WorkflowRun**
-
-- `_id` (ObjectId)
-- `tenant_id` (Ref → Tenant)
-- `type` (`ticket_triage`)
-- `ticket_id` (Ref → Ticket)
-- `status` (`running`, `succeeded`, `failed`)
-- `started_by_user_id` (Ref → User)
-- `started_at`
-- `finished_at` (nullable)
-- `error_message` (nullable)
-
-**WorkflowStep**
-
-- `_id` (ObjectId)
-- `tenant_id` (Ref → Tenant)
-- `workflow_run_id` (Ref → WorkflowRun)
-- `step_type` (`classification`, `priority`, `assignee_suggestion`, `reply_draft`)
-- `input_snapshot` (JSON)
-- `output_snapshot` (JSON)
-- `created_at`
-
-Optional v1 (can be added later):
-
-**CannedResponse / Policy**
-
-- `_id` (ObjectId)
-- `tenant_id`
-- `category`
-- `template` (text)
+- Embeddable script for Next.js frontend:
+  - Minimal widget with:
+    - Name, email, message field.
+    - Posts to `/api/tickets/ingest` with channel=`chat`.
 
 ---
 
-## 4. Tenant Resolution & Security Model
+### 1.2 Shared Inbox & Teams
 
-- On login, backend identifies user and returns a JWT that includes:
-  - `user_id`, `tenant_id`, `role`. [clerk](https://clerk.com/blog/how-to-design-multitenant-saas-architecture)
-- Every authenticated request:
-  - Extract `tenant_id` from token.
-  - All queries use `WHERE tenant_id = currentTenantId`. [acropolium](https://acropolium.com/blog/build-scale-a-multi-tenant-saas/)
-- No endpoint accepts `tenant_id` from the client directly (to avoid tenant hopping).
+**Shared team inbox**
 
----
+- Centralized ticket list for all agents:
+  - Supports claim/assign, status changes, and comments. [kustomer](https://www.kustomer.com/resources/blog/ai-powered-help-desk-software/)
 
-## 5. System Architecture (Phase 1)
+**Teams**
 
-### 5.1 Frontend
+- In v1, keep teams simple:
+  - One workspace = one “team” with individual agents.
+  - Each ticket has an optional `assigneeId`.
 
-- React SPA with a notion of “current user” and “current tenant” from JWT.
-- All API calls send the auth token; no front‑end tenant scoping beyond that.
+**Collaboration basics**
 
-Views:
-
-- Auth:
-  - Signup (creates tenant + first admin user).
-  - Login.
-- App:
-  - Ticket List (scoped to tenant via backend).
-  - Ticket Detail (with AI suggestions & reply editor).
-  - WorkflowRun Detail.
-
-### 5.2 Backend
-
-- Node/Nest with modules:
-  - `auth` (signup/login, `me`),
-  - `tenants`,
-  - `users`,
-  - `tickets`,
-  - `workflows`,
-  - `ai`.
-
-### 5.3 Agent/Workflow Service
-
-- Module/class implementing `TicketTriageWorkflow`:
-  - Takes `tenant_id` + `ticket_id` + `started_by_user_id`.
-  - Reads only tenant‑scoped data.
-  - Calls LLM and persists workflow data.
-
-### 5.4 Storage & Infra
-
-- DB: Postgres with `tenant_id` on all relevant tables. [learn.microsoft](https://learn.microsoft.com/en-us/azure/azure-sql/database/saas-tenancy-app-design-patterns?view=azuresql)
-- Background jobs: in‑process or BullMQ (single queue, multi‑tenant).
-- Deployment: 1 API service, 1 frontend service (multi‑tenant at app level).
+- Internal notes:
+  - Agents can add internal notes that are not visible to customers.
+- Mentions (optional v1.1):
+  - `@` mention an agent in an internal note (no notifications needed in v1; simple visual highlight).
 
 ---
 
-## 6. API Design (Phase 1, Multi‑tenant aware)
+### 1.3 AI Copilot Core
 
-All routes are implicitly scoped by `tenant_id` from JWT; no `tenant_id` in request body/query.
+**Intent & triage**
 
-### 6.1 Auth & Tenants
+- Automatically infer for each new ticket:
+  - **Intent** (order status, refund, shipping issue, payment failure, account access, general question).
+  - **Sentiment** (calm, frustrated, angry). [gettalkative](https://gettalkative.com/info/ai-copilots-in-customer-service)
+  - **Priority** (low/medium/high).
+  - Tags (e.g. `billing`, `shipping`, `bug`, `feature_request`). [helpjam](https://helpjam.com/blog/top-8-ai-help-desk-features-every-saas-business-needs/)
 
-- `POST /auth/signup`
-  - Body:
-    - `tenant_name`
-    - `user_name`
-    - `email`
-    - `password`
-  - Behavior:
-    - Create new `Tenant`.
-    - Create `User` with `role = admin` belonging to this tenant.
-    - Return `user`, `tenant`, `access_token`.
+**Answer suggestions**
 
-- `POST /auth/login`
-  - Body: `email, password`
-  - Behavior:
-    - Find user by email (within any tenant).
-    - Return `user`, `tenant`, `access_token`.
+- For each open ticket:
+  - Retrieve relevant KB docs and snippets from similar resolved tickets.
+  - Draft a suggested reply:
+    - In the tenant’s tone and language.
+    - With clear paragraphs, bullet points when needed.
+    - Suggest next actions (“If your payment still fails, we recommend…”). [helpjam](https://helpjam.com/blog/top-8-ai-help-desk-features-every-saas-business-needs/)
 
-- `GET /auth/me`
-  - Returns: `user`, `tenant`.
+**Agent UI behavior**
 
-### 6.2 Users
+- When opening a ticket:
+  - AI suggestion automatically loads (or via “Generate suggestion” button).
+- Agent sees:
+  - Suggested answer (editable).
+  - Confidence indicator or “AI quality” label (e.g. low/medium/high).
+  - Short “Why this answer” explanation (summarized from retrieved docs). [assembled](https://www.assembled.com/page/ai-copilots-customer-service)
 
-- `GET /users` (admin only)
-  - List users in current tenant.
+**No auto-send**
 
-- `POST /users` (admin)
-  - Body: `name, email, role`
-  - Create user under current tenant with default password or invite flow (for v1 you can keep it simple).
-
-### 6.3 Tickets
-
-- `POST /tickets`
-  - Body:
-    - `subject`
-    - `body`
-    - `channel` (`email` | `web_form`)
-    - `customer_name?`
-    - `customer_email?`
-  - Behavior:
-    - Create `Ticket` with `tenant_id = currentTenantId`, `status = new`, `created_by_id = currentUserId`.
-
-- `GET /tickets`
-  - Query: `status?`, `assignee_id?`, pagination.
-  - Return tickets for current tenant only.
-
-- `GET /tickets/:id`
-  - Return ticket + replies + last AI suggestion (if needed) for current tenant.
-
-- `PATCH /tickets/:id`
-  - Body: any of `status`, `priority`, `category`, `assignee_id`.
-  - Update only ticket in current tenant.
-
-### 6.4 Ticket Replies
-
-- `POST /tickets/:id/replies`
-  - Body:
-    - `body` (string)
-  - Behavior:
-    - Create `TicketReply` with:
-      - `tenant_id = currentTenantId`
-      - `author_type = human`
-      - `author_id = currentUserId`
-    - Update `Ticket.status` → `replied`.
-
-(You may also auto‑send or just treat as “internal reply” in v1.)
-
-### 6.5 Workflows
-
-- `POST /tickets/:id/workflows/triage`
-  - Behavior:
-    - Verify ticket belongs to current tenant.
-    - Start `TicketTriageWorkflow`:
-      - Create `WorkflowRun` (`tenant_id`, `ticket_id`, `started_by_user_id`).
-      - Run steps (sync in v1).
-      - Persist `WorkflowStep`s.
-      - Save AI reply draft as `TicketReply` with `author_type = ai` (optional flag `is_draft`).
-    - Returns:
-      - `workflow_run`
-      - `ticket_updates` (suggested `category`, `priority`, `assignee_id`)
-      - `ai_reply_draft` (text).
-
-- `GET /workflows/runs/:id`
-  - Returns `WorkflowRun` + `WorkflowStep[]` (only if `tenant_id` matches current tenant).
+- Agent must click “Send” (or “Copy & paste to your tool”) to send.
+- For inbound email:
+  - v1: store “outgoing message” in ticket but do not automatically send replies from opsFlow (so they can still reply via their own tool).
+  - v1.1 (optional): send email directly from opsFlow using SMTP/transactional service.
 
 ---
 
-## 7. TicketTriageWorkflow (Agentic Flow)
+### 1.4 Knowledge Base & AI Content
 
-### 7.1 Inputs
+**KB management**
 
-- `tenant_id`
-- `ticket_id`
-- `started_by_user_id`
+- Admin can:
+  - Add/edit/delete KB articles.
+  - Organize into categories (FAQ, Shipping, Payments, Account, Technical, etc.). [zendesk](https://www.zendesk.com/service/help-desk-software/saas-help-desk/)
 
-Workflow always scopes DB calls by `tenant_id`.
+- Article fields:
+  - Title, category, body (Markdown), visibility (internal only vs customer‑facing in future).
 
-### 7.2 Steps
+**AI-powered KB usage**
 
-1. **Fetch context**
-   - Fetch ticket (tenant‑scoped).
-   - Fetch tenant’s users (for assignee suggestions).
-   - Optionally fetch canned responses/policies.
-
-2. **Classification**
-   - Prompt LLM:
-     - “Given this ticket, classify into: bug, feature_request, billing, general, other. Return JSON `{category, reason}`.”
-   - Save `WorkflowStep` with `step_type = classification`.
-
-3. **Priority**
-   - Prompt LLM:
-     - “Based on category + text, decide priority: low, medium, high, urgent; with reason.”
-   - Save `WorkflowStep` with `step_type = priority`.
-
-4. **Assignee suggestion**
-   - Prompt LLM with list of team members (names + roles or “skills” notes):
-     - “Pick best assignee_id or null; explain why.”
-   - Save `WorkflowStep` with `step_type = assignee_suggestion`.
-
-5. **Reply draft**
-   - Prompt LLM:
-     - Use ticket text, category, priority, and optional policies.
-     - Draft reply with structure: greeting, summary, answer, next steps.
-     - Return `reply_body`.
-   - Save `WorkflowStep` with `step_type = reply_draft`.
-
-6. **Persist changes**
-   - Update `Ticket` fields with suggested `category`, `priority`, `assignee_id` (but user can override).
-   - Create `TicketReply`:
-     - `tenant_id = tenant_id`
-     - `ticket_id`
-     - `author_type = ai`
-     - `body = reply_body`.
-   - Set `WorkflowRun.status = succeeded`.
-
-7. **Error handling**
-   - On failure:
-     - `WorkflowRun.status = failed`, `error_message` set.
-     - No ticket fields changed unless previous steps succeeded.
+- RAG:
+  - Use KB + optional “resolved tickets” snippets for context retrieval. [aubergine](https://www.aubergine.co/insights/revolutionizing-customer-support-with-rag-powered-chatbot)
+- AI guardrails:
+  - AI must cite which articles it used (titles listed in UI).
+  - If no relevant docs, AI should say it lacks information and ask agent to confirm.
 
 ---
 
-## 8. Frontend UX (Tenant‑aware, but simple)
+### 1.5 Teams & Roles
 
-### 8.1 Auth & Tenant
+**Roles**
 
-- Signup creates tenant + first user:
-  - After success, user is logged in and taken to their tenant’s dashboard.
-- No tenant selector in v1 (user belongs to exactly one tenant).
+- Admin:
+  - Manage workspace settings, KB, inbound email, API keys, members.
+- Agent:
+  - Work tickets, use AI suggestions, add KB suggestions but cannot publish them (optional).
 
-### 8.2 Ticket List
+**Members**
 
-- Shows tickets for current tenant only (backend enforced).
-- Columns: Subject, Customer, Status, Priority, Category, Assignee, “AI triaged?” indicator.
-
-### 8.3 Ticket Detail
-
-- Header: Subject, customer, created_at, status, priority, category, assignee.
-- Body: Ticket content.
-- AI Section:
-  - If no AI triage yet:
-    - Button “Run AI triage”.
-  - After AI triage:
-    - Show suggested category, priority, assignee (with reasoning tooltips).
-    - Reply editor prefilled with AI draft:
-      - Buttons: “Save & Mark Replied”, “Save as Draft” (optional).
-- Link to Workflow history.
-
-### 8.4 WorkflowRun View
-
-- Timeline UI showing each step:
-  - Classification → Priority → Assignee → Reply draft.
-- Show `input_snapshot` and `output_snapshot` (pretty‑printed JSON / summary).
+- Invite flow:
+  - Admin invites via email, sets role.
+  - Invitee accepts and sets password.
 
 ---
 
-## 9. Observability
+### 1.6 Metrics & Reporting
 
-- Each LLM call logs:
-  - `tenant_id`, `ticket_id`, `workflow_run_id`, `step_type`, model, latency, success/error. [docs.aws.amazon](https://docs.aws.amazon.com/pdfs/prescriptive-guidance/latest/agentic-ai-multitenant/agentic-ai-multitenant.pdf)
-- Logs can live in DB as part of `WorkflowStep` plus application logs.
+**Agent-level metrics**
+
+- Per agent:
+  - Tickets assigned.
+  - Tickets closed.
+  - AI suggestions used vs edited vs ignored. [helpjam](https://helpjam.com/blog/top-8-ai-help-desk-features-every-saas-business-needs/)
+
+**Workspace-level metrics**
+
+- Per workspace:
+  - Tickets per day/week.
+  - AI suggestions generated.
+  - % of tickets where suggestion was “used as is” vs “edited” vs “ignored”. [hiverhq](https://hiverhq.com/blog/best-help-desk-software-features)
+  - Average first response time (approx based on ticket open vs first reply timestamp). [hiverhq](https://hiverhq.com/blog/best-help-desk-software-features)
+
+**Dashboard v1**
+
+- Simple dashboard page:
+  - Date range selector.
+  - Cards:
+    - Tickets created.
+    - Tickets closed.
+    - AI suggestions generated.
+    - AI suggestions used.
+  - Basic charts:
+    - Tickets over time.
+    - AI usage over time. [hiverhq](https://hiverhq.com/blog/best-help-desk-software-features)
 
 ---
 
-## 10. Non‑Functional Requirements
+### 1.7 Public Website & Pricing Page
 
-- Tenant isolation:
-  - No data from tenant A ever returned in responses for tenant B (enforced by `tenant_id` checks). [relevant](https://relevant.software/blog/multi-tenant-architecture/)
+**Landing page (Next.js)**
+
+- Sections:
+  - Hero:
+    - Headline: “AI copilot for your support team” (or opsFlow phrasing).
+    - Subheadline: “Let AI draft perfect replies from your docs — you stay in control.” [assembled](https://www.assembled.com/page/ai-copilots-customer-service)
+    - Primary CTA: “Start free” (link to signup).
+  - How it works:
+    - 3 steps (Connect inbox, Upload docs, Let AI draft answers).
+  - Features:
+    - Smart triage, AI drafts, shared inbox, KB.
+  - For whom:
+    - E‑commerce, SaaS, fintech‑like businesses.
+  - Testimonials (placeholder for now).
+  - Footer: docs, privacy, terms, contact.
+
+**Pricing page (v1)**
+
+- Single plan section:
+  - “Public Beta — Free”
+  - Bullets:
+    - Up to X tickets/month.
+    - Up to Y AI suggestions/month.
+    - Up to Z team members.
+  - Secondary CTA: “Sign up free” (no credit card).
+  - Note: “Paid plans coming later — lock in free access now.” [getmonetizely](https://www.getmonetizely.com/articles/how-to-price-ai-services-in-2025-models-examples-and-strategy-for-saas-leaders)
+
+---
+
+### 1.8 Documentation (Docs Site)
+
+**Docs structure**
+
+- `/docs` route as a docs homepage.
+
+Sections:
+
+1. **Getting Started**
+   - What is opsFlow v1.
+   - Concepts: Workspace, Ticket, KB, AI Suggestion.
+   - 5‑minute quickstart:
+     - Create workspace.
+     - Setup inbound email.
+     - Upload docs.
+     - Open first ticket and see AI suggestion.
+
+2. **Setup**
+   - Workspace setup.
+   - Inbound email configuration:
+     - How to forward emails from Gmail/Google Workspace and other providers.
+   - API key + `/tickets/ingest` integration. [azure-samples.github](https://azure-samples.github.io/azure-open-ai-rag-oyd-text-images/workshop_overview/)
+
+3. **Using opsFlow**
+   - Shared inbox.
+   - Working with tickets and AI suggestions.
+   - KB editing and best practices (how to write good docs for AI).
+
+4. **Admin & Security**
+   - Roles and permissions.
+   - Data handling and privacy overview (high level).
+
+5. **FAQ**
+   - Common questions (what AI does/doesn’t do, how to control it, supported languages, etc.).
+
+---
+
+## 2. Non‑Functional Requirements (expanded)
+
 - Performance:
-  - Triage action ≤ 5–8 seconds for typical ticket.
-- Safety:
-  - Replies avoid promises on money/timelines unless explicitly present.
+  - Ticket list loads under 2 seconds with typical volume.
+  - AI suggestion under 10 seconds for majority of cases. [youtube](https://www.youtube.com/watch?v=eGicNXq7X8w)
+
+- Reliability:
+  - Inbound email must be idempotent; duplicate emails should not create duplicate tickets.
+  - Basic retry logic for AI pipeline failures (queue retry with back‑off).
+
+- Security & data:
+  - Per-tenant logical isolation, no cross-tenant KB retrieval.
+  - Only authorized users with same tenant_id can access tickets and KB.
+
+- Observability:
+  - Basic log events:
+    - `ticket.ingested`, `ticket.ai_pipeline_started`, `ticket.ai_pipeline_finished`, `ticket.ai_pipeline_failed`, `ai_suggestion.used`, `ai_suggestion.ignored` etc. [gettalkative](https://gettalkative.com/info/ai-copilots-in-customer-service)
+
+- Multi-language (minimum)
+  - Support tickets in at least English first.
+  - LLM should auto-detect user language; future versions may enable multilingual responses. [helpjam](https://helpjam.com/blog/top-8-ai-help-desk-features-every-saas-business-needs/)
 
 ---
 
-## 11. Build Order (Phase 1, Multi‑tenant aware)
+## 3. Modules (System Architecture Level)
 
-1. Implement DB schema with `Tenant` + `tenant_id` on all relevant collections.
-2. Implement signup (create tenant + admin user) and login.
-3. Implement `GET /auth/me` and basic frontend auth.
-4. Implement ticket CRUD API (scoped by tenant) + frontend list/detail.
-5. Implement `TicketTriageWorkflow` with static/mock outputs.
-6. Wire up `POST /tickets/:id/workflows/triage` + frontend “Run AI triage” button.
-7. Replace mock with real LLM calls and `WorkflowRun`/`WorkflowStep` persistence.
-8. Add WorkflowRun detail view.
-9. Polish UX and error handling.
+### 3.1 Inbound Email Service
+
+- Accepts emails via:
+  - Webhook from email provider OR direct SMTP receiver.
+- Normalizes and forwards payload to Ingestion module.
+
+### 3.2 Ingestion & Ticketing Service
+
+- Creates/updates Tikets in Mongo.
+- Emits events to the AI Pipeline queue.
+
+### 3.3 AI Pipeline Service
+
+- Stateless worker service that:
+  - Fetches ticket.
+  - Runs classification chain.
+  - Runs RAG retrieval.
+  - Generates suggestion and updates Ticket.
+
+### 3.4 Knowledge Base Service
+
+- CRUD for KB articles.
+- Async indexing into vector store.
+
+### 3.5 Auth & Tenant Service
+
+- Handles signup, login, sessions.
+- Manages tenants, roles, memberships.
+
+### 3.6 Metrics & Reporting Service
+
+- Aggregates events into TenantUsage & AgentUsage.
+- Serves metrics API for Dashboard.
+
+### 3.7 Frontend App (Next.js)
+
+- Public site (landing + pricing + docs).
+- App (inbox, ticket UI, KB, settings, dashboard).
+
+---
+
+## 4. API Endpoints (No Code, Just Shape)
+
+You can keep the endpoints roughly as previously defined, but v1 spec now **assumes**:
+
+- Endpoint for inbound email (internal / provider-specific).
+- Tickets + KB + Settings + Metrics endpoints as described earlier.
+
+(You explicitly said no code, so I’m not repeating shapes.)
+
+---
+
+## 5. UX / UI Screens (Expanded)
+
+### 5.1 Public pages
+
+- **Home / Landing**
+- **Pricing**
+- **Docs index**
+- **Auth** (Signup, Login, Forgot Password)
+
+### 5.2 App pages
+
+- **Dashboard**
+  - Key metrics cards, simple charts.
+
+- **Inbox / Tickets list**
+  - Filters, search, row-level AI indicators.
+
+- **Ticket detail**
+  - Left: conversation, info.
+  - Right: AI panel, internal notes, history of AI suggestions.
+
+- **Knowledge Base**
+  - List + editor.
+
+- **Team & Members**
+  - Invite members, change roles, view pending invites.
+
+- **Settings**
+  - Workspace info, inbound email alias, API key, tone, language, signature.
+
+---
+
+## 6. v1 Completion Criteria
+
+- A new workspace can:
+  - Sign up from the landing page.
+  - Get an inbound email address.
+  - Forward their support email to it.
+  - Upload at least 3–5 KB articles.
+  - See new tickets arrive in the inbox.
+  - Open a ticket and get an AI suggestion, with visible KB sources.
+  - Use the suggestion to respond (even if manually via copy‑paste).
+  - See usage metrics update on the dashboard.
+
+Once everything above works reliably for a test tenant, v1 is “done” and you’re ready to let real teams use it for free while you work on v2 autonomy.
+
+If you want, next I can generate a **Linear/Jira-style task breakdown** from this v1 spec so you can feed it into Trae or your own planner.

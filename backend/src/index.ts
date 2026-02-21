@@ -4,10 +4,9 @@ import dotenv from 'dotenv';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
-import jwt from 'jsonwebtoken';
 import { connectDB } from './db';
 import mongoose from 'mongoose';
-import authRouter from './routes/auth';
+import betterAuthRouter from './routes/auth-better';
 import usersRouter from './routes/users';
 import ticketsRouter from './routes/tickets';
 import dashboardRouter from './routes/dashboard';
@@ -15,6 +14,9 @@ import clientsRouter from './routes/clients';
 import emailRouter from './routes/email';
 import actionsRouter from './routes/actions';
 import notificationsRouter from './routes/notifications';
+import zendeskRouter from './routes/zendesk';
+import kbRouter from './routes/kb';
+import settingsRouter from './routes/settings';
 
 dotenv.config();
 
@@ -50,14 +52,6 @@ const limiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => {
-    const auth = req.headers.authorization || '';
-    if (auth.startsWith('Bearer ')) {
-      const token = auth.slice(7);
-      try {
-        const payload: any = jwt.decode(token);
-        if (payload && typeof payload.sub === 'string') return `user:${payload.sub}`;
-      } catch {}
-    }
     const ip = req.ip || (req.connection as any)?.remoteAddress || '';
     return `ip:${ip}`;
   },
@@ -75,6 +69,7 @@ if (frontendUrl) {
 } else {
   app.use(cors());
 }
+app.use('/api/auth', betterAuthRouter);
 app.use(
   express.json({
     verify: (req, _res, buf) => {
@@ -83,7 +78,6 @@ app.use(
   }),
 );
 app.use(limiter);
-app.use('/auth', authRouter);
 app.use('/users', usersRouter);
 app.use('/tickets', ticketsRouter);
 app.use('/dashboard', dashboardRouter);
@@ -91,6 +85,9 @@ app.use('/clients', clientsRouter);
 app.use('/email', emailRouter);
 app.use('/actions', actionsRouter);
 app.use('/notifications', notificationsRouter);
+app.use('/integrations/zendesk', zendeskRouter);
+app.use('/kb', kbRouter);
+app.use('/settings', settingsRouter);
 
 app.get('/', (req: Request, res: Response) => {
   res.send('OpsFlow Agent Desk API');
@@ -100,6 +97,24 @@ app.get('/health', (req: Request, res: Response) => {
   res.json({ status: 'ok', db: mongoose.connection.readyState });
 });
 
-app.listen(port, () => {
+const server = app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
+
+function shutdown(signal: string) {
+  console.log(`Received ${signal}, starting graceful shutdown...`);
+  server.close(() => {
+    mongoose
+      .disconnect()
+      .catch(() => {})
+      .finally(() => {
+        process.exit(0);
+      });
+  });
+  setTimeout(() => {
+    process.exit(1);
+  }, 30000).unref();
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));

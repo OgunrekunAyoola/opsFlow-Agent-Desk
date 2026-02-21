@@ -24,6 +24,7 @@ export interface ITicket extends Document {
     suggestedCategory?: string;
     summary?: string;
     suggestedReply?: string;
+    sources?: { id: string; title: string }[];
   };
   isAiTriaged: boolean;
   createdAt: Date;
