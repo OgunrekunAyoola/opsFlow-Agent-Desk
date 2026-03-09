@@ -1,4 +1,4 @@
-const API_URL = 'http://127.0.0.1:3000';
+const API_URL = process.env.API_URL || 'http://127.0.0.1:3001';
 let axios;
 try {
   axios = require('../frontend/node_modules/axios');
@@ -20,7 +20,9 @@ async function run() {
   if (!signup.data.user?.email) throw new Error('signup missing user');
 
   const setCookie = signup.headers['set-cookie'] || [];
-  const cookieHeader = Array.isArray(setCookie) ? setCookie.join('; ') : '';
+  const cookieHeader = Array.isArray(setCookie)
+    ? setCookie.map((c) => c.split(';')[0]).join('; ')
+    : '';
   if (!cookieHeader) throw new Error('missing session cookies after sign-up');
 
   const me = await axios.get(`${API_URL}/auth/me`, {

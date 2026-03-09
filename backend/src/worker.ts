@@ -2,7 +2,9 @@ import { Worker } from 'bullmq';
 import { connectDB } from './db';
 import TicketReply from './models/TicketReply';
 import { EmailService } from './services/EmailService';
+import { ResolvedTicketEmbeddingService } from './services/ResolvedTicketEmbeddingService';
 import mongoose from 'mongoose';
+import { executeIntegrationSync } from './services/IntegrationSyncService';
 
 function buildConnection() {
   const url = process.env.REDIS_URL;
@@ -36,7 +38,7 @@ function buildConnection() {
 
 async function start() {
   await connectDB();
-  const worker = new Worker(
+  const emailWorker = new Worker(
     'email-send',
     async (job) => {
       const data = job.data as {
@@ -63,7 +65,36 @@ async function start() {
     },
     { connection: buildConnection(), concurrency: Number(process.env.QUEUE_CONCURRENCY || 5) },
   );
-  worker.on('failed', () => {});
+  emailWorker.on('failed', () => {});
+
+  const snippetWorker = new Worker(
+    'resolved-snippet',
+    async (job) => {
+      const data = job.data as {
+        tenantId: string;
+        ticketId: string;
+      };
+      const tenantObjectId = new mongoose.Types.ObjectId(data.tenantId);
+      const ticketObjectId = new mongoose.Types.ObjectId(data.ticketId);
+      const service = new ResolvedTicketEmbeddingService();
+      await service.upsertSnippetForTicket(tenantObjectId, ticketObjectId);
+    },
+    {
+      connection: buildConnection(),
+      concurrency: Number(process.env.SNIPPET_QUEUE_CONCURRENCY || 3),
+    },
+  );
+  snippetWorker.on('failed', () => {});
+
+  const integrationWorker = new Worker(
+    'integration-sync',
+    async (job) => {
+      const { connectionId } = job.data;
+      await executeIntegrationSync(connectionId);
+    },
+    { connection: buildConnection(), concurrency: 2 },
+  );
+  integrationWorker.on('failed', () => {});
 }
 
 start().catch(async () => {

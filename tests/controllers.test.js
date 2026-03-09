@@ -1,4 +1,4 @@
-const API_URL = 'http://127.0.0.1:3000';
+const API_URL = 'http://127.0.0.1:3001';
 let axios;
 try {
   axios = require('../frontend/node_modules/axios');
@@ -21,7 +21,9 @@ async function run() {
     name: 'Admin',
   });
   const setCookieAdmin = signup.headers['set-cookie'] || [];
-  const adminCookie = Array.isArray(setCookieAdmin) ? setCookieAdmin.join('; ') : '';
+  const adminCookie = Array.isArray(setCookieAdmin)
+    ? setCookieAdmin.map((c) => c.split(';')[0]).join('; ')
+    : '';
   const authAdmin = { headers: { Cookie: adminCookie } };
 
   // Create member via /users (admin-only)
@@ -40,7 +42,9 @@ async function run() {
     { withCredentials: true },
   );
   const setCookieMember = loginMember.headers['set-cookie'] || [];
-  const memberCookie = Array.isArray(setCookieMember) ? setCookieMember.join('; ') : '';
+  const memberCookie = Array.isArray(setCookieMember)
+    ? setCookieMember.map((c) => c.split(';')[0]).join('; ')
+    : '';
   const authMember = { headers: { Cookie: memberCookie } };
 
   // Users list should be forbidden for member

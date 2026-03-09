@@ -6,8 +6,15 @@ export interface ITicket extends Document {
   subject: string;
   body: string;
   messageId?: string;
-  channel: 'email' | 'web_form';
-  status: 'new' | 'triaged' | 'awaiting_reply' | 'replied' | 'closed' | 'auto_resolved';
+  channel: 'email' | 'web_form' | 'integration';
+  status:
+    | 'new'
+    | 'triaged'
+    | 'awaiting_reply'
+    | 'replied'
+    | 'closed'
+    | 'auto_resolved'
+    | 'triaging';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   category: 'bug' | 'feature_request' | 'billing' | 'general' | 'other';
   customerName?: string;
@@ -25,6 +32,10 @@ export interface ITicket extends Document {
     summary?: string;
     suggestedReply?: string;
     sources?: { id: string; title: string }[];
+    faithfulness?: 'high' | 'medium' | 'low';
+    completeness?: 'high' | 'medium' | 'low';
+    risk?: 'low' | 'medium' | 'high';
+    explanation?: string;
   };
   isAiTriaged: boolean;
   createdAt: Date;
@@ -38,10 +49,10 @@ const TicketSchema: Schema = new Schema(
     subject: { type: String, required: true },
     messageId: { type: String, index: true },
     body: { type: String, required: true },
-    channel: { type: String, enum: ['email', 'web_form'], required: true },
+    channel: { type: String, enum: ['email', 'web_form', 'integration'], required: true },
     status: {
       type: String,
-      enum: ['new', 'triaged', 'awaiting_reply', 'replied', 'closed', 'auto_resolved'],
+      enum: ['new', 'triaged', 'awaiting_reply', 'replied', 'closed', 'auto_resolved', 'triaging'],
       default: 'new',
       index: true,
     },
@@ -65,6 +76,16 @@ const TicketSchema: Schema = new Schema(
       suggestedCategory: { type: String },
       summary: { type: String },
       suggestedReply: { type: String },
+      sources: [
+        {
+          id: { type: String },
+          title: { type: String },
+        },
+      ],
+      faithfulness: { type: String, enum: ['high', 'medium', 'low'] },
+      completeness: { type: String, enum: ['high', 'medium', 'low'] },
+      risk: { type: String, enum: ['low', 'medium', 'high'] },
+      explanation: { type: String },
     },
     isAiTriaged: { type: Boolean, default: false },
   },

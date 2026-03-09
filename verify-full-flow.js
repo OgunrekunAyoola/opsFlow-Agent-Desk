@@ -33,7 +33,9 @@ async function runTest() {
       name: 'Test Admin',
     });
     const setCookie = res.headers['set-cookie'] || [];
-    cookieHeader = Array.isArray(setCookie) ? setCookie.join('; ') : '';
+    cookieHeader = Array.isArray(setCookie)
+      ? setCookie.map((c) => c.split(';')[0]).join('; ')
+      : '';
     if (!cookieHeader) throw new Error('No cookies returned');
     console.log('✅ OK');
   } catch (err) {
@@ -202,7 +204,9 @@ async function runTest() {
       password: adminPassword,
       name: 'Test Admin B',
     });
-    const cookies2 = (signup2.headers['set-cookie'] || []).join('; ');
+    const cookies2 = (signup2.headers['set-cookie'] || [])
+      .map((c) => c.split(';')[0])
+      .join('; ');
     const headers2 = { Cookie: cookies2 };
     const create2 = await axios.post(
       `${API_URL}/tickets`,

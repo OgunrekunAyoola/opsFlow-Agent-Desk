@@ -1,34 +1,60 @@
+import 'dotenv/config';
 import express, { Request, Response } from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import { connectDB } from './db';
 import mongoose from 'mongoose';
-import betterAuthRouter from './routes/auth-better';
+import Redis from 'ioredis';
+import { buildConnection } from './queue';
+import { toNodeHandler } from 'better-auth/node';
+import { auth } from './auth';
 import usersRouter from './routes/users';
 import ticketsRouter from './routes/tickets';
 import dashboardRouter from './routes/dashboard';
-import clientsRouter from './routes/clients';
 import emailRouter from './routes/email';
 import actionsRouter from './routes/actions';
+import eventsRouter from './routes/events';
 import notificationsRouter from './routes/notifications';
 import zendeskRouter from './routes/zendesk';
 import kbRouter from './routes/kb';
 import settingsRouter from './routes/settings';
+import authRouter from './routes/auth';
+import integrationsRouter from './routes/integrations';
+import { errorHandler } from './middleware/errorHandler';
+import logger from './utils/logger';
+import { requestLogger } from './middleware/requestLogger';
+import { startGrpcServer } from './grpc/server';
 
-dotenv.config();
-
-console.log('Starting OpsFlow Backend...');
+logger.info('Starting OpsFlow Backend...');
 
 const app = express();
-const port = process.env.PORT || 3000;
+app.use(requestLogger);
+const port = process.env.PORT || 3001;
 
-console.log(`Configured port: ${port}`);
+logger.info(`Configured port: ${port}`);
 
 // Connect to DB but don't block startup
-connectDB().then(() => console.log('DB Connection attempt finished'));
+connectDB().then(() => logger.info('DB Connection attempt finished'));
+
+// Start gRPC Server
+startGrpcServer();
+
+const redisConfig = (() => {
+  const hasRedisUrl = Boolean(process.env.REDIS_URL);
+  const hasRedisHost = Boolean(process.env.REDIS_HOST);
+  if (!hasRedisUrl && !hasRedisHost) {
+    return null;
+  }
+  try {
+    return buildConnection();
+  } catch {
+    return null;
+  }
+})();
+
+const redis = redisConfig && process.env.NODE_ENV !== 'test' ? new Redis(redisConfig as any) : null;
 
 const isReverseProxy =
   Boolean(
@@ -58,18 +84,14 @@ const limiter = rateLimit({
 });
 app.use(helmet());
 app.use(cookieParser());
-const frontendUrl = process.env.FRONTEND_URL;
-if (frontendUrl) {
-  app.use(
-    cors({
-      origin: frontendUrl,
-      credentials: true,
-    }),
-  );
-} else {
-  app.use(cors());
-}
-app.use('/api/auth', betterAuthRouter);
+const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+  }),
+);
+app.all('/api/auth/*splat', toNodeHandler(auth));
 app.use(
   express.json({
     verify: (req, _res, buf) => {
@@ -78,12 +100,15 @@ app.use(
   }),
 );
 app.use(limiter);
+app.use('/auth', authRouter);
 app.use('/users', usersRouter);
 app.use('/tickets', ticketsRouter);
 app.use('/dashboard', dashboardRouter);
-app.use('/clients', clientsRouter);
+
+app.use('/integrations', integrationsRouter);
 app.use('/email', emailRouter);
 app.use('/actions', actionsRouter);
+app.use('/events', eventsRouter);
 app.use('/notifications', notificationsRouter);
 app.use('/integrations/zendesk', zendeskRouter);
 app.use('/kb', kbRouter);
@@ -96,6 +121,29 @@ app.get('/', (req: Request, res: Response) => {
 app.get('/health', (req: Request, res: Response) => {
   res.json({ status: 'ok', db: mongoose.connection.readyState });
 });
+
+app.get('/ready', async (req: Request, res: Response) => {
+  const dbReady = mongoose.connection.readyState === 1;
+  let redisOk = true;
+
+  if (redis) {
+    try {
+      await redis.ping();
+    } catch {
+      redisOk = false;
+    }
+  }
+
+  const ok = dbReady && redisOk;
+  res.status(ok ? 200 : 503).json({
+    status: ok ? 'ok' : 'degraded',
+    db: dbReady,
+    redis: redis ? redisOk : null,
+  });
+});
+
+// Global Error Handler
+app.use(errorHandler);
 
 const server = app.listen(port, () => {
   console.log(`Server is running on port ${port}`);

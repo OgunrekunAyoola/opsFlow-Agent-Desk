@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package ticket;
+
+service TicketService {
+  rpc GetTicket (GetTicketRequest) returns (TicketResponse);
+  rpc CreateTicket (CreateTicketRequest) returns (TicketResponse);
+  rpc ListTickets (ListTicketsRequest) returns (ListTicketsResponse);
+  rpc UpdateTicket (UpdateTicketRequest) returns (TicketResponse);
+  rpc TriageTicket (TriageTicketRequest) returns (TriageTicketResponse);
+  rpc SearchTickets (SearchTicketsRequest) returns (ListTicketsResponse);
+  rpc ReplyTicket (ReplyTicketRequest) returns (TicketResponse);
+}
+
+message ReplyTicketRequest {
+  string id = 1;
+  string tenantId = 2;
+  string body = 3;
+  string userId = 4;
+}
+
+message SearchTicketsRequest {
+  string query = 1;
+  string tenantId = 2;
+  int32 limit = 3;
+}
+
+message GetTicketRequest {
+  string id = 1;
+  string tenantId = 2;
+}
+
+message CreateTicketRequest {
+  string subject = 1;
+  string body = 2;
+  string tenantId = 3;
+}
+
+message ListTicketsRequest {
+  string tenantId = 1;
+  int32 page = 2;
+  int32 limit = 3;
+  string status = 4; // Optional filter
+}
+
+message ListTicketsResponse {
+  repeated TicketResponse tickets = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 totalPages = 4;
+}
+
+message UpdateTicketRequest {
+  string id = 1;
+  string tenantId = 2;
+  string status = 3;
+  string priority = 4;
+}
+
+message TriageTicketRequest {
+  string id = 1;
+  string tenantId = 2;
+  string userId = 3; // Who triggered it
+}
+
+message TriageTicketResponse {
+  string id = 1;
+  string status = 2;
+  string message = 3;
+}
+
+message TicketResponse {
+  string id = 1;
+  string subject = 2;
+  string status = 3;
+  string priority = 4;
+  string body = 5;
+  string createdAt = 6;
+  string aiDraftText = 7;
+  double aiConfidence = 8;
+  string aiSuggestedCategory = 9;
+}

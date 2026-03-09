@@ -1,13 +1,12 @@
 import { createAuthClient } from 'better-auth/react';
 import { organizationClient } from 'better-auth/client/plugins';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:3000';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:3001';
+const AUTH_BASE = `${API_BASE}/api/auth`;
 
 export const authClient = createAuthClient({
-  baseURL: API_BASE,
-  plugins: [
-    organizationClient(),
-  ],
+  baseURL: AUTH_BASE,
+  plugins: [organizationClient()],
 });
 
 export type ApiResult<T> = {
@@ -41,4 +40,50 @@ export async function fetchWithAccess<T>(path: string, init?: RequestInit): Prom
     status: res.status,
     data,
   };
+}
+
+type AuthErrorShape = {
+  message?: string;
+} | null;
+
+type SocialSignInClient = {
+  signIn: {
+    social: (params: { provider: string; callbackURL?: string }) => Promise<void>;
+  };
+};
+
+type ForgetPasswordClient = {
+  forgetPassword: (params: {
+    email: string;
+    redirectTo: string;
+  }) => Promise<{ error?: AuthErrorShape }>;
+};
+
+type ChangePasswordClient = {
+  changePassword: (params: {
+    currentPassword: string;
+    newPassword: string;
+  }) => Promise<{ error?: AuthErrorShape }>;
+};
+
+type EmailOtpClient = {
+  emailOtp: {
+    verifyEmail: (params: { token: string }) => Promise<{ error?: AuthErrorShape }>;
+  };
+};
+
+export function getSocialSignInClient(): SocialSignInClient {
+  return authClient as unknown as SocialSignInClient;
+}
+
+export function getForgetPasswordClient(): ForgetPasswordClient {
+  return authClient as unknown as ForgetPasswordClient;
+}
+
+export function getChangePasswordClient(): ChangePasswordClient {
+  return authClient as unknown as ChangePasswordClient;
+}
+
+export function getEmailOtpClient(): EmailOtpClient {
+  return authClient as unknown as EmailOtpClient;
 }

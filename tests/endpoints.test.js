@@ -1,4 +1,11 @@
-const API_URL = 'http://127.0.0.1:3000';
+const API_URL = process.env.API_URL || 'http://127.0.0.1:3001';
+const path = require('path');
+const mongoose = require('../backend/node_modules/mongoose');
+const dotenv = require('../backend/node_modules/dotenv');
+dotenv.config({ path: path.join(__dirname, '..', 'backend', '.env') });
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/opsflow';
+const TenantModule = require('../backend/dist/models/Tenant');
+const Tenant = TenantModule.default || TenantModule;
 let axios;
 try {
   axios = require('../frontend/node_modules/axios');
@@ -23,11 +30,25 @@ async function run() {
   adminToken = '';
   inboundAddress = '';
   const setCookie = signup.headers['set-cookie'] || [];
-  const cookieHeader = Array.isArray(setCookie) ? setCookie.join('; ') : '';
+  const cookieHeader = Array.isArray(setCookie)
+    ? setCookie.map((c) => c.split(';')[0]).join('; ')
+    : '';
   const auth = { headers: { Cookie: cookieHeader } };
 
   const me = await axios.get(`${API_URL}/auth/me`, auth);
   if (!me.data.user?.email) throw new Error('me failed');
+
+  const tenantId = me.data.tenant && me.data.tenant.id;
+  if (!tenantId) throw new Error('tenant missing on me');
+  await mongoose.connect(MONGO_URI);
+  const tenantDoc = await Tenant.findById(tenantId).exec();
+  if (!tenantDoc) throw new Error('tenant not found in db');
+  if (!tenantDoc.inboundAddress) {
+    tenantDoc.inboundAddress = `support+${tenantId}@opsflow.test`;
+    await tenantDoc.save();
+  }
+  inboundAddress = tenantDoc.inboundAddress;
+  await mongoose.disconnect();
 
   // Dashboard
   const stats0 = await axios.get(`${API_URL}/dashboard/stats`, auth);

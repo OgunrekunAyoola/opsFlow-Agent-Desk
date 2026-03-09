@@ -21,6 +21,7 @@ for (let i = 1; i <= rounds; i += 1) {
   runScript('Login Flow Test', 'node', ['./tests/login-flow.test.js']);
   runScript('Multi-Tenant Isolation Test', 'node', ['./tests/multi-tenant-isolation.test.js']);
   runScript('Models Test', 'node', ['./tests/models.test.js']);
+  runScript('KB Test', 'node', ['./tests/kb.test.js']);
 }
 
 console.log('\nAll rounds completed successfully.');

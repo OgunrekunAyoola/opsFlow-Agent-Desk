@@ -1,6 +1,8 @@
 import { Queue } from 'bullmq';
+import { ResolvedTicketEmbeddingService } from '../services/ResolvedTicketEmbeddingService';
+import mongoose from 'mongoose';
 
-function buildConnection() {
+export function buildConnection() {
   const url = process.env.REDIS_URL;
   if (url) {
     try {
@@ -30,17 +32,51 @@ function buildConnection() {
   } as any;
 }
 
-const shouldUseMock =
-  !process.env.REDIS_URL &&
-  !process.env.REDIS_HOST &&
-  (process.env.NODE_ENV !== 'production');
+export const shouldUseMock =
+  !process.env.REDIS_URL && !process.env.REDIS_HOST && process.env.NODE_ENV !== 'production';
+
+console.log(`[Queue] Initializing... shouldUseMock=${shouldUseMock}`);
 
 class MockQueue {
   async add(_name: string, _data: any) {
+    console.log(`[MockQueue] Adding job ${_name}`, _data);
     return { id: 'mock', name: _name };
+  }
+}
+
+class MockResolvedQueue {
+  async add(name: string, data: any) {
+    console.log(`[MockResolvedQueue] Processing job ${name} directly (no Redis)`, data);
+    if (name === 'upsert') {
+      // Fire and forget (don't await to avoid blocking response)
+      (async () => {
+        try {
+          const service = new ResolvedTicketEmbeddingService();
+          await service.upsertSnippetForTicket(
+            new mongoose.Types.ObjectId(data.tenantId),
+            new mongoose.Types.ObjectId(data.ticketId),
+          );
+        } catch (e) {
+          console.error('[MockResolvedQueue] Failed to process job', e);
+        }
+      })();
+    }
+    return { id: 'mock-direct', name };
   }
 }
 
 export const emailSendQueue: { add: (name: string, data: any) => Promise<any> } = shouldUseMock
   ? new MockQueue()
   : new Queue('email-send', { connection: buildConnection() });
+
+export const resolvedSnippetQueue: {
+  add: (name: string, data: any) => Promise<any>;
+} = shouldUseMock
+  ? new MockResolvedQueue()
+  : new Queue('resolved-snippet', { connection: buildConnection() });
+
+export const integrationSyncQueue: {
+  add: (name: string, data: any) => Promise<any>;
+} = shouldUseMock
+  ? new MockQueue()
+  : new Queue('integration-sync', { connection: buildConnection() });

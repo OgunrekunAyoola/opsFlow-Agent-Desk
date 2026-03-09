@@ -1,4 +1,4 @@
-const API_URL = 'http://127.0.0.1:3000';
+const API_URL = process.env.API_URL || 'http://127.0.0.1:3001';
 let axios;
 try {
   axios = require('../frontend/node_modules/axios');
@@ -17,7 +17,9 @@ async function run() {
     password: adminPassword,
     name: 'Admin',
   });
-  const cookieHeader = (signup.headers['set-cookie'] || []).join('; ');
+  const cookieHeader = (signup.headers['set-cookie'] || [])
+    .map((c) => c.split(';')[0])
+    .join('; ');
   const auth = { headers: { Cookie: cookieHeader } };
 
   await axios.patch(

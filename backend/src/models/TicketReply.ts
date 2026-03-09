@@ -11,6 +11,8 @@ export interface ITicketReply extends Document {
   deliveryProvider?: string;
   providerMessageId?: string;
   deliveryError?: string;
+  isInternalNote?: boolean;
+  type?: 'reply' | 'note';
   createdAt: Date;
 }
 
@@ -21,6 +23,8 @@ const TicketReplySchema: Schema = new Schema(
     authorType: { type: String, enum: ['ai', 'human'], required: true },
     authorId: { type: Schema.Types.ObjectId, ref: 'User' },
     body: { type: String, required: true },
+    isInternalNote: { type: Boolean, default: false },
+    type: { type: String, enum: ['reply', 'note'], default: 'reply' },
     deliveryStatus: {
       type: String,
       enum: ['queued', 'sent', 'delivered', 'bounced', 'complained', 'failed'],

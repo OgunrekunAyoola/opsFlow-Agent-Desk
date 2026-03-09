@@ -5,6 +5,7 @@ import Ticket from '../models/Ticket';
 import TicketReply from '../models/TicketReply';
 import User from '../models/User';
 import UserAction from '../models/UserAction';
+import IntegrationConnection from '../models/IntegrationConnection';
 
 const router = Router();
 
@@ -13,6 +14,12 @@ router.get('/stats', requireAuth, async (req, res) => {
 
   try {
     const tenantObjectId = new mongoose.Types.ObjectId(tenantId);
+
+    // Check if tenant has any active integrations
+    const hasIntegrations = await IntegrationConnection.exists({
+      tenantId: tenantObjectId,
+      status: 'active',
+    });
 
     // 1. Ticket Counts by Status
     const statusCounts = await Ticket.aggregate([
@@ -62,6 +69,7 @@ router.get('/stats', requireAuth, async (req, res) => {
         suggestionsUsed: aiSuggestionUses,
         autoReplies,
       },
+      hasIntegrations: !!hasIntegrations,
     };
 
     res.json(stats);

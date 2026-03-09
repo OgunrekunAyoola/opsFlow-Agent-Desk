@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import { z } from 'zod';
+import { validate } from '../middleware/validate';
 import { requireAuth } from '../middleware/auth';
 import Ticket from '../models/Ticket';
 import Client from '../models/Client';
@@ -6,9 +8,11 @@ import TicketReply from '../models/TicketReply';
 import User from '../models/User';
 import Notification from '../models/Notification';
 import { EmailService } from '../services/EmailService';
-import { emailSendQueue } from '../queue/index';
+import { emailSendQueue, resolvedSnippetQueue } from '../queue/index';
 import UserAction from '../models/UserAction';
 import Tenant from '../models/Tenant';
+import { ResolvedTicketEmbeddingService } from '../services/ResolvedTicketEmbeddingService';
+import AiCorrection from '../models/AiCorrection';
 
 const router = Router();
 const frontendBaseUrl = (process.env.FRONTEND_BASE_URL || 'http://localhost:5173').replace(
@@ -16,9 +20,21 @@ const frontendBaseUrl = (process.env.FRONTEND_BASE_URL || 'http://localhost:5173
   '',
 );
 
+function computeEditRatio(a: string, b: string): number {
+  if (!a || !b) return 1;
+  const maxLen = Math.max(a.length, b.length);
+  if (maxLen === 0) return 0;
+  const minLen = Math.min(a.length, b.length);
+  let same = 0;
+  for (let i = 0; i < minLen; i += 1) {
+    if (a[i] === b[i]) same += 1;
+  }
+  return 1 - same / maxLen;
+}
+
 // List tickets
 router.get('/', requireAuth, async (req, res) => {
-  const { tenantId } = (req as any).currentUser;
+  const { tenantId, userId } = (req as any).currentUser;
   const {
     status,
     priority,
@@ -33,6 +49,8 @@ router.get('/', requireAuth, async (req, res) => {
   if (priority) query.priority = priority;
   if (assigneeId === 'unassigned') {
     query.assigneeId = null;
+  } else if (assigneeId === 'me') {
+    query.assigneeId = userId;
   } else if (assigneeId) {
     query.assigneeId = assigneeId;
   }
@@ -61,13 +79,24 @@ router.get('/', requireAuth, async (req, res) => {
 });
 
 // Create ticket
-router.post('/', requireAuth, async (req, res) => {
-  const { tenantId, userId } = (req as any).currentUser;
-  const { subject, body, customerName, customerEmail, priority, category, clientId } = req.body;
+const createTicketSchema = z.object({
+  body: z.object({
+    subject: z.string().min(1, 'Subject is required'),
+    body: z.string().min(1, 'Body is required'),
+    customerName: z.string().optional(),
+    customerEmail: z.string().email('Invalid email').optional(),
+    priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
+    category: z.string().optional(),
+    clientId: z.string().optional(),
+  }),
+});
 
-  if (!subject || !body) {
-    return res.status(400).json({ error: 'Subject and body are required' });
+router.post('/', requireAuth, validate(createTicketSchema), async (req, res) => {
+  const { tenantId, userId } = (req as any).currentUser || {};
+  if (!tenantId) {
+    return res.status(500).json({ error: 'missing_tenant_in_context' });
   }
+  const { subject, body, customerName, customerEmail, priority, category, clientId } = req.body;
 
   // Optional client validation
   let clientRef: any = undefined;
@@ -280,7 +309,33 @@ router.post('/:id/reply', requireAuth, async (req, res) => {
         subjectId: reply._id,
         meta: { ticketId: id },
       });
+
+      try {
+        const originalQuestion = `${ticket.subject || ''}\n\n${ticket.body || ''}`.trim();
+        const aiSuggestion = ticket.aiDraft?.body || ticket.aiAnalysis?.suggestedReply || '';
+        const finalHumanAnswer = body;
+        if (originalQuestion && aiSuggestion && finalHumanAnswer) {
+          const editRatio = computeEditRatio(aiSuggestion, finalHumanAnswer);
+          await AiCorrection.create({
+            tenantId,
+            ticketId: ticket._id,
+            originalQuestion,
+            aiSuggestion,
+            finalHumanAnswer,
+            intent: ticket.category,
+            tags: [],
+            editRatio,
+          });
+        }
+      } catch {}
     }
+  } catch {}
+
+  try {
+    await resolvedSnippetQueue.add('upsert', {
+      tenantId: tenantId.toString(),
+      ticketId: ticket._id.toString(),
+    });
   } catch {}
 
   res.status(201).json(reply);
@@ -350,12 +405,25 @@ router.patch('/:id', requireAuth, async (req, res) => {
     }
   }
 
+  // Level 4 Trigger: If ticket is closed, trigger embedding update
+  if (['closed', 'resolved'].includes(ticket.status)) {
+    try {
+      await resolvedSnippetQueue.add('upsert', {
+        tenantId: tenantId.toString(),
+        ticketId: ticket._id.toString(),
+      });
+    } catch (e) {
+      console.error('Failed to queue embedding upsert', e);
+    }
+  }
+
   res.json(ticket);
 });
 
 import { TicketTriageWorkflow } from '../services/TicketTriageWorkflow';
 import WorkflowRun from '../models/WorkflowRun';
 import WorkflowStep from '../models/WorkflowStep';
+import LlmCallLog from '../models/LlmCallLog';
 
 // ... existing imports
 
@@ -378,10 +446,131 @@ router.get('/:id/workflows', requireAuth, async (req, res) => {
   res.json(runsWithSteps);
 });
 
+// List high-risk AI replies for review
+router.get('/ai/review', requireAuth, async (req, res) => {
+  const { tenantId } = (req as any).currentUser;
+  const { limit: limitStr } = req.query as any;
+  const limit = Math.max(Math.min(parseInt(limitStr || '50', 10) || 50, 100), 1);
+
+  const riskyTickets = await Ticket.find({
+    tenantId,
+    'aiAnalysis.risk': 'high',
+  })
+    .sort({ updatedAt: -1 })
+    .limit(limit)
+    .select(
+      '_id subject aiAnalysis.createdAt aiAnalysis.risk aiAnalysis.faithfulness aiAnalysis.completeness',
+    )
+    .lean()
+    .exec();
+
+  const heavyCorrections = await AiCorrection.find({
+    tenantId,
+    editRatio: { $gte: 0.4 },
+  })
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .lean()
+    .exec();
+
+  const heavyTicketIds = Array.from(new Set(heavyCorrections.map((c) => c.ticketId.toString())));
+
+  let heavyTickets: any[] = [];
+  if (heavyTicketIds.length > 0) {
+    heavyTickets = await Ticket.find({
+      tenantId,
+      _id: { $in: heavyTicketIds },
+    })
+      .select(
+        '_id subject aiAnalysis.createdAt aiAnalysis.risk aiAnalysis.faithfulness aiAnalysis.completeness',
+      )
+      .lean()
+      .exec();
+  }
+
+  const combinedMap = new Map<string, any>();
+  riskyTickets.forEach((t) => {
+    combinedMap.set(t._id.toString(), t);
+  });
+  heavyTickets.forEach((t) => {
+    const id = t._id.toString();
+    if (!combinedMap.has(id)) {
+      combinedMap.set(id, t);
+    }
+  });
+
+  const combined = Array.from(combinedMap.values()).sort((a, b) => {
+    const aTime =
+      (a.aiAnalysis && a.aiAnalysis.createdAt
+        ? new Date(a.aiAnalysis.createdAt).getTime()
+        : new Date(a.updatedAt || 0).getTime()) || 0;
+    const bTime =
+      (b.aiAnalysis && b.aiAnalysis.createdAt
+        ? new Date(b.aiAnalysis.createdAt).getTime()
+        : new Date(b.updatedAt || 0).getTime()) || 0;
+    return bTime - aTime;
+  });
+
+  res.json(combined.slice(0, limit));
+});
+
+// Basic AI usage metrics for this tenant
+router.get('/ai/metrics', requireAuth, async (req, res) => {
+  const { tenantId } = (req as any).currentUser;
+  const { since } = req.query as any;
+
+  const match: any = { tenantId };
+  if (since) {
+    const sinceDate = new Date(since);
+    if (!isNaN(sinceDate.getTime())) {
+      match.createdAt = { $gte: sinceDate };
+    }
+  }
+
+  const agg = await LlmCallLog.aggregate([
+    { $match: match },
+    {
+      $group: {
+        _id: '$task',
+        totalCalls: { $sum: 1 },
+        successes: { $sum: { $cond: ['$success', 1, 0] } },
+        failures: { $sum: { $cond: ['$success', 0, 1] } },
+        avgLatencyMs: { $avg: '$latencyMs' },
+      },
+    },
+  ]);
+
+  res.json(agg);
+});
+
+// Simple in-memory rate limiter for AI-heavy endpoints
+const aiRateBuckets = new Map<string, { count: number; windowStart: number }>();
+const AI_WINDOW_MS = 60_000;
+const AI_MAX_CALLS_PER_WINDOW = 20;
+
+function checkAiRateLimit(tenantId: string): boolean {
+  const now = Date.now();
+  const key = tenantId || 'unknown';
+  const bucket = aiRateBuckets.get(key);
+  if (!bucket || now - bucket.windowStart > AI_WINDOW_MS) {
+    aiRateBuckets.set(key, { count: 1, windowStart: now });
+    return true;
+  }
+  if (bucket.count >= AI_MAX_CALLS_PER_WINDOW) {
+    return false;
+  }
+  bucket.count += 1;
+  return true;
+}
+
 // Run AI Triage Workflow
 router.post('/:id/workflows/triage', requireAuth, async (req, res) => {
   const { tenantId, userId } = (req as any).currentUser;
   const { id } = req.params;
+
+  if (!checkAiRateLimit(String(tenantId))) {
+    return res.status(429).json({ error: 'ai_rate_limited' });
+  }
 
   const workflow = new TicketTriageWorkflow();
   try {

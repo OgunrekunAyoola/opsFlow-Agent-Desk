@@ -1,0 +1,30 @@
+[
+  {
+    "id": "billing-urgent-1",
+    "subject": "Urgent: double-charged on my invoice",
+    "body": "I was billed twice this month for the same subscription. This is blocking our budget approvals and needs to be fixed immediately.",
+    "expectedCategory": "billing",
+    "expectedPriority": "high"
+  },
+  {
+    "id": "bug-login-1",
+    "subject": "Login error when accessing dashboard",
+    "body": "Our agents see a generic error when trying to log in to the dashboard. It started after yesterday's deploy.",
+    "expectedCategory": "bug",
+    "expectedPriority": "high"
+  },
+  {
+    "id": "feature-request-1",
+    "subject": "Feature request: custom ticket views",
+    "body": "We would like to create saved views for VIP customers and high value accounts. Is this possible?",
+    "expectedCategory": "feature_request",
+    "expectedPriority": "medium"
+  },
+  {
+    "id": "general-low-1",
+    "subject": "Minor typo on pricing page",
+    "body": "There's a small spelling mistake on the pricing page footer. Not urgent, just wanted to flag it.",
+    "expectedCategory": "general",
+    "expectedPriority": "low"
+  }
+]

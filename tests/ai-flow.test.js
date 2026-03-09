@@ -1,4 +1,4 @@
-const API_URL = 'http://127.0.0.1:3000';
+const API_URL = process.env.API_URL || 'http://127.0.0.1:3001';
 let axios;
 try {
   axios = require('../frontend/node_modules/axios');
@@ -18,7 +18,9 @@ async function run() {
     name: 'Admin',
   });
   const setCookie = signup.headers['set-cookie'] || [];
-  const cookieHeader = Array.isArray(setCookie) ? setCookie.join('; ') : '';
+  const cookieHeader = Array.isArray(setCookie)
+    ? setCookie.map((c) => c.split(';')[0]).join('; ')
+    : '';
   const auth = { headers: { Cookie: cookieHeader } };
 
   // Create ticket
@@ -50,6 +52,12 @@ async function run() {
     throw new Error('workflow history missing');
   if (!hist.data[0].steps || hist.data[0].steps.length < 1)
     throw new Error('workflow steps missing');
+
+  const aiMetrics = await axios.get(`${API_URL}/tickets/ai/metrics`, auth);
+  if (!Array.isArray(aiMetrics.data)) throw new Error('ai metrics response is not an array');
+
+  const aiReview = await axios.get(`${API_URL}/tickets/ai/review`, auth);
+  if (!Array.isArray(aiReview.data)) throw new Error('ai review response is not an array');
 
   console.log('AI Flow OK');
 }

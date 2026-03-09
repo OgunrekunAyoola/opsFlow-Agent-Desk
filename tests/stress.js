@@ -55,7 +55,9 @@ async function createAdmin(ts) {
     name: 'Admin',
   });
   const setCookie = signup.headers['set-cookie'] || [];
-  const cookieHeader = Array.isArray(setCookie) ? setCookie.join('; ') : '';
+  const cookieHeader = Array.isArray(setCookie)
+    ? setCookie.map((c) => c.split(';')[0]).join('; ')
+    : '';
   const headers = { Cookie: cookieHeader };
   return { headers, adminEmail, adminPassword };
 }
@@ -91,7 +93,9 @@ async function scenarioAuth(ts, adminEmail, adminPassword, totalOps, concurrency
       { withCredentials: true },
     );
     const setCookie = login.headers['set-cookie'] || [];
-    const cookieHeader = Array.isArray(setCookie) ? setCookie.join('; ') : '';
+    const cookieHeader = Array.isArray(setCookie)
+      ? setCookie.map((c) => c.split(';')[0]).join('; ')
+      : '';
     if (!cookieHeader) throw new Error('login missing cookies');
   });
   const t1 = Date.now();

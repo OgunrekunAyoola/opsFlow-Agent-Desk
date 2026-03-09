@@ -16,6 +16,8 @@ export interface ITenant extends Document {
   zendeskToken?: string;
   zendeskRefreshToken?: string;
   zendeskTokenExpiresAt?: Date;
+  aiDraftEnabled?: boolean;
+  aiUsePastTickets?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -26,7 +28,6 @@ const TenantSchema: Schema = new Schema(
     slug: { type: String, unique: true, sparse: true },
     inboundAddress: { type: String, unique: true, sparse: true },
     inboundSecret: { type: String, unique: true, sparse: true },
-    ingestApiKey: { type: String, unique: true, sparse: true },
     supportEmail: { type: String },
     autoReplyEnabled: { type: Boolean, default: false },
     autoReplyConfidenceThreshold: { type: Number, default: 0.9 },
@@ -40,6 +41,9 @@ const TenantSchema: Schema = new Schema(
     zendeskToken: { type: String },
     zendeskRefreshToken: { type: String },
     zendeskTokenExpiresAt: { type: Date },
+    aiDraftEnabled: { type: Boolean, default: true },
+    aiUsePastTickets: { type: Boolean, default: true },
+    ingestApiKey: { type: String, unique: true, sparse: true },
   },
   { timestamps: true },
 );

@@ -24,7 +24,9 @@ async function run() {
     name: 'Admin',
   });
   const setCookie = signup.headers['set-cookie'] || [];
-  const cookieHeader = Array.isArray(setCookie) ? setCookie.join('; ') : '';
+  const cookieHeader = Array.isArray(setCookie)
+    ? setCookie.map((c) => c.split(';')[0]).join('; ')
+    : '';
   const headers = { Cookie: cookieHeader };
 
   // Create ticket

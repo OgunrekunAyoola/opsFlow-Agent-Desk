@@ -1,8 +1,64 @@
 import { Router } from 'express';
 import { requireAuth, requireAdmin } from '../middleware/auth';
 import KBArticle from '../models/KBArticle';
+import KBArticleProposal from '../models/KBArticleProposal';
 
 const router = Router();
+
+// --- Proposals (Level 4: Self-Learning) ---
+
+router.get('/proposals', requireAuth, requireAdmin, async (req, res) => {
+  const { tenantId } = (req as any).currentUser;
+  const items = await KBArticleProposal.find({ tenantId, status: 'pending' })
+    .sort({ confidenceScore: -1 })
+    .exec();
+  res.json({ items });
+});
+
+router.post('/proposals/:id/approve', requireAuth, requireAdmin, async (req, res) => {
+  const { tenantId, userId } = (req as any).currentUser;
+  const { id } = req.params;
+  const { title, body, tags } = req.body; // Allow override
+
+  const proposal = await KBArticleProposal.findOne({ _id: id, tenantId });
+  if (!proposal) return res.status(404).json({ error: 'Proposal not found' });
+
+  if (proposal.status !== 'pending') {
+    return res.status(400).json({ error: 'Proposal already processed' });
+  }
+
+  // Create the actual article
+  const article = await KBArticle.create({
+    tenantId,
+    title: title || proposal.title,
+    body: body || proposal.content,
+    tags: tags || proposal.tags,
+    createdById: userId,
+    updatedById: userId,
+  });
+
+  // Mark proposal as approved
+  proposal.status = 'approved';
+  await proposal.save();
+
+  res.json({ article });
+});
+
+router.post('/proposals/:id/reject', requireAuth, requireAdmin, async (req, res) => {
+  const { tenantId } = (req as any).currentUser;
+  const { id } = req.params;
+
+  const proposal = await KBArticleProposal.findOneAndUpdate(
+    { _id: id, tenantId },
+    { status: 'rejected' },
+    { new: true },
+  );
+
+  if (!proposal) return res.status(404).json({ error: 'Proposal not found' });
+  res.json({ ok: true });
+});
+
+// --- Existing KB Routes ---
 
 router.get('/', requireAuth, async (req, res) => {
   const { tenantId } = (req as any).currentUser;
@@ -89,4 +145,3 @@ router.delete('/:id', requireAuth, requireAdmin, async (req, res) => {
 });
 
 export default router;
-
