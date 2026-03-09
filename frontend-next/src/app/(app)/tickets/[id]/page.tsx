@@ -697,25 +697,45 @@ export default function TicketDetailPage() {
                   )}
 
                   <div className="space-y-3 pt-2">
-                    <Button
-                      className="w-full bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/20"
-                      onClick={useSuggestionAsReply}
-                      disabled={usingSuggestion}
-                      size="sm"
-                    >
-                      {usingSuggestion ? (
-                        <>
-                          <div className="mr-2 h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                          Sending...
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle2 className="mr-2 h-4 w-4" /> Use Suggestion
-                        </>
-                      )}
-                    </Button>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        variant="outline"
+                        className="w-full border-blue-500/20 text-blue-300 hover:bg-blue-500/10 hover:text-blue-200"
+                        onClick={() => {
+                          if (ticket.aiDraft?.body) {
+                            setReplyBody(ticket.aiDraft.body);
+                            // Scroll to reply box
+                            const replyBox = document.querySelector('textarea');
+                            if (replyBox) {
+                              replyBox.focus();
+                              replyBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                          }
+                        }}
+                        size="sm"
+                      >
+                        <FileText className="mr-2 h-4 w-4" /> Edit Draft
+                      </Button>
+                      <Button
+                        className="w-full bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/20"
+                        onClick={useSuggestionAsReply}
+                        disabled={usingSuggestion}
+                        size="sm"
+                      >
+                        {usingSuggestion ? (
+                          <>
+                            <div className="mr-2 h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                            Sending...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="mr-2 h-4 w-4" /> Approve & Send
+                          </>
+                        )}
+                      </Button>
+                    </div>
                     <p className="text-[10px] text-center text-slate-500">
-                      The suggested reply will be sent immediately.
+                      'Approve & Send' will send the reply immediately.
                     </p>
                   </div>
                 </div>

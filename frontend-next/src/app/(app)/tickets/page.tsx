@@ -1,193 +1,278 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
-  listTicketsAction,
-  createTicketAction,
-  triageTicketAction,
-  searchTicketsAction,
-  replyTicketAction,
-  Ticket,
-} from '@/actions/ticket-actions';
-import SearchInput from '@/components/SearchInput';
+  Plus,
+  Search,
+  Filter,
+  MoreHorizontal,
+  ArrowUpDown,
+  User,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  MessageSquare,
+} from 'lucide-react';
+import { fetchWithAccess } from '../../../lib/auth-client';
+import { Button } from '../../../components/ui/Button';
+import { Input } from '../../../components/ui/Input';
+import { Badge } from '../../../components/ui/Badge';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '../../../components/ui/Card';
+import { Skeleton } from '../../../components/ui/Skeleton';
 
-const DEMO_TENANT_ID = '65f2d6c0c9b9a1b2c3d4e5f6';
-const DEMO_USER_ID = '65f2d6c0c9b9a1b2c3d4e5f7';
+interface Ticket {
+  _id: string;
+  subject: string;
+  status: string;
+  priority: string;
+  customerName?: string;
+  customerEmail?: string;
+  assigneeId?: { _id: string; name: string; email: string } | null;
+  createdAt: string;
+  updatedAt: string;
+  aiDraft?: {
+    body?: string;
+    confidence?: number;
+  };
+}
 
-export default async function TicketsPage(props: { searchParams: Promise<{ query?: string }> }) {
-  const searchParams = await props.searchParams;
-  const query = searchParams?.query || '';
+interface TicketResponse {
+  items: Ticket[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
 
-  let tickets: Ticket[] = [];
-  if (query) {
-    const result = await searchTicketsAction(DEMO_TENANT_ID, query);
-    tickets = result.success && result.data ? result.data.tickets : [];
-  } else {
-    const result = await listTicketsAction(DEMO_TENANT_ID);
-    tickets = result.success && result.data ? result.data.tickets : [];
-  }
+export default function TicketsPage() {
+  const router = useRouter();
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams();
+        if (debouncedSearch) params.set('search', debouncedSearch);
+
+        const res = await fetchWithAccess<TicketResponse>(`/tickets?${params.toString()}`);
+        if (res.ok && res.data) {
+          setTickets(res.data.items);
+        } else if (res.status === 401) {
+          router.push('/login');
+        } else {
+          setError('Failed to load tickets');
+        }
+      } catch (err) {
+        setError('An error occurred while loading tickets');
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, [debouncedSearch, router]);
+
+  const statusColors: Record<string, string> = {
+    new: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+    triaged: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+    awaiting_reply: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+    replied: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
+    resolved: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+    closed: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
+  };
+
+  const priorityColors: Record<string, string> = {
+    urgent: 'bg-red-500/10 text-red-400 border-red-500/20',
+    high: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+    medium: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
+    low: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  };
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
-      <h1 className="text-3xl font-bold mb-8">gRPC Ticket Dashboard</h1>
-
-      {/* Create Ticket Form */}
-      <div className="bg-white p-6 rounded-lg shadow mb-8">
-        <h2 className="text-xl font-semibold mb-4">Create New Ticket</h2>
-        <form
-          action={async (formData) => {
-            'use server';
-            await createTicketAction(formData);
-          }}
-          className="space-y-4"
-        >
-          <input type="hidden" name="tenantId" value={DEMO_TENANT_ID} />
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Subject</label>
-            <input
-              name="subject"
-              type="text"
-              required
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
-              placeholder="e.g., Cannot access dashboard"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Body</label>
-            <textarea
-              name="body"
-              required
-              rows={3}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
-              placeholder="Describe the issue..."
-            />
-          </div>
-          <button
-            type="submit"
-            className="inline-flex justify-center rounded-md border border-transparent bg-indigo-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-          >
-            Create via gRPC
-          </button>
-        </form>
-      </div>
-
-      {/* Ticket List Header and Search */}
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">Tickets</h2>
-        <div className="w-1/2 max-w-sm">
-          <SearchInput />
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-100 tracking-tight">Tickets</h1>
+          <p className="text-slate-400 mt-1">Manage and respond to support requests.</p>
         </div>
+        <Link href="/tickets/new">
+          <Button className="bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/20">
+            <Plus className="mr-2 h-4 w-4" /> New Ticket
+          </Button>
+        </Link>
       </div>
 
-      {/* Ticket List */}
-      <div className="bg-white shadow overflow-hidden sm:rounded-md">
-        <ul role="list" className="divide-y divide-gray-200">
-          {tickets.length === 0 ? (
-            <li className="px-4 py-4 sm:px-6 text-center text-gray-500">
-              {query
-                ? `No tickets found matching "${query}"`
-                : 'No tickets found. Create one above!'}
-            </li>
-          ) : (
-            tickets.map((ticket: Ticket) => (
-              <li key={ticket.id} className="px-4 py-4 sm:px-6 hover:bg-gray-50">
-                <div className="flex items-center justify-between">
-                  <div className="flex flex-col">
-                    <p className="text-sm font-medium text-indigo-600 truncate">{ticket.subject}</p>
-                    <p className="mt-1 flex items-center text-sm text-gray-500">
-                      <span className="truncate">{ticket.body}</span>
-                    </p>
-                    <div className="mt-2 flex items-center text-xs text-gray-400 gap-2">
-                      <span>ID: {ticket.id}</span>
-                      <span>•</span>
-                      <span>{new Date(ticket.createdAt).toLocaleString()}</span>
+      <Card className="border-slate-800 bg-slate-900/20 backdrop-blur-sm">
+        <CardHeader className="pb-4 border-b border-slate-800/50">
+          <div className="flex flex-col md:flex-row gap-4 justify-between">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+              <Input
+                placeholder="Search tickets..."
+                className="pl-9 bg-slate-950/50 border-slate-800 focus:border-blue-500/50 transition-colors"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-slate-800 text-slate-400 hover:text-slate-200"
+              >
+                <Filter className="mr-2 h-4 w-4" /> Filter
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-slate-800 text-slate-400 hover:text-slate-200"
+              >
+                <ArrowUpDown className="mr-2 h-4 w-4" /> Sort
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {loading ? (
+            <div className="p-6 space-y-4">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-4 flex-1">
+                    <Skeleton className="h-10 w-10 rounded-full" />
+                    <div className="space-y-2 flex-1">
+                      <Skeleton className="h-4 w-1/3" />
+                      <Skeleton className="h-3 w-1/2" />
                     </div>
-
-                    {/* AI Draft Section */}
-                    {ticket.aiDraftText && (
-                      <div className="mt-4 p-3 bg-indigo-50 rounded-md border border-indigo-100">
-                        <div className="flex justify-between items-center mb-2">
-                          <h4 className="text-xs font-semibold text-indigo-800 uppercase tracking-wider">
-                            AI Suggested Reply
-                          </h4>
-                          {ticket.aiConfidence !== undefined && (
-                            <span className="text-xs text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded-full">
-                              {Math.round(ticket.aiConfidence * 100)}% Confidence
+                  </div>
+                  <Skeleton className="h-8 w-24" />
+                </div>
+              ))}
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center text-red-400">
+              <AlertCircle className="h-10 w-10 mb-3 opacity-50" />
+              <p>{error}</p>
+            </div>
+          ) : tickets.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="h-16 w-16 rounded-full bg-slate-800/50 flex items-center justify-center mb-4">
+                <MessageSquare className="h-8 w-8 text-slate-600" />
+              </div>
+              <h3 className="text-lg font-medium text-slate-200 mb-1">No tickets found</h3>
+              <p className="text-slate-500 max-w-sm mx-auto mb-6">
+                {debouncedSearch
+                  ? `No tickets match "${debouncedSearch}"`
+                  : 'Get started by creating your first support ticket.'}
+              </p>
+              {!debouncedSearch && (
+                <Link href="/tickets/new">
+                  <Button variant="outline" className="border-slate-700 hover:bg-slate-800">
+                    Create Ticket
+                  </Button>
+                </Link>
+              )}
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-800/50">
+              {tickets.map((ticket) => (
+                <Link
+                  key={ticket._id}
+                  href={`/tickets/${ticket._id}`}
+                  className="block hover:bg-slate-800/30 transition-colors"
+                >
+                  <div className="p-4 sm:px-6 flex items-center justify-between gap-4">
+                    <div className="flex items-start gap-4 min-w-0">
+                      <div
+                        className={`mt-1 h-2 w-2 rounded-full shrink-0 ${
+                          ticket.status === 'new'
+                            ? 'bg-blue-500'
+                            : ticket.status === 'urgent'
+                              ? 'bg-red-500'
+                              : 'bg-slate-600'
+                        }`}
+                      />
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-slate-200 truncate block">
+                            {ticket.subject}
+                          </span>
+                          <span className="text-xs text-slate-500 shrink-0">
+                            #{ticket._id.slice(-6)}
+                          </span>
+                          {ticket.aiDraft?.body &&
+                            ticket.status !== 'replied' &&
+                            ticket.status !== 'closed' && (
+                              <Badge className="bg-purple-500/10 text-purple-400 border-purple-500/20 text-[10px] px-1.5 py-0 h-5">
+                                AI Draft
+                              </Badge>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-slate-500">
+                          <span className="flex items-center gap-1">
+                            <User className="h-3 w-3" />
+                            {ticket.customerName || ticket.customerEmail || 'Unknown'}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {new Date(ticket.createdAt).toLocaleDateString()}
+                          </span>
+                          {ticket.assigneeId && (
+                            <span className="flex items-center gap-1 text-slate-400 bg-slate-900/50 px-1.5 py-0.5 rounded border border-slate-800">
+                              <span className="h-1.5 w-1.5 rounded-full bg-green-500/50" />
+                              {ticket.assigneeId.name}
                             </span>
                           )}
                         </div>
-                        <p className="text-sm text-gray-700 whitespace-pre-wrap font-mono text-xs">
-                          {ticket.aiDraftText}
-                        </p>
-                        {ticket.aiSuggestedCategory && (
-                          <div className="mt-2 text-xs text-gray-500 border-t border-indigo-100 pt-2">
-                            Suggested Category:{' '}
-                            <span className="font-medium text-gray-700">
-                              {ticket.aiSuggestedCategory}
-                            </span>
-                          </div>
-                        )}
-                        <form
-                          action={async () => {
-                            'use server';
-                            await replyTicketAction(
-                              ticket.id,
-                              DEMO_TENANT_ID,
-                              ticket.aiDraftText || '',
-                              DEMO_USER_ID,
-                            );
-                          }}
-                          className="mt-3"
-                        >
-                          <button
-                            type="submit"
-                            className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                          >
-                            Approve & Send Reply
-                          </button>
-                        </form>
                       </div>
-                    )}
-                  </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <span
-                      className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
-                        ticket.status === 'new'
-                          ? 'bg-blue-100 text-blue-800'
-                          : ticket.status === 'triaged'
-                            ? 'bg-purple-100 text-purple-800'
-                            : 'bg-green-100 text-green-800'
-                      }`}
-                    >
-                      {ticket.status}
-                    </span>
-                    <span
-                      className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
-                        ticket.priority === 'high'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}
-                    >
-                      {ticket.priority}
-                    </span>
+                    </div>
 
-                    <form
-                      action={async () => {
-                        'use server';
-                        await triageTicketAction(ticket.id, DEMO_TENANT_ID, DEMO_USER_ID);
-                      }}
-                    >
-                      <button
-                        type="submit"
-                        className="text-xs text-indigo-600 hover:text-indigo-900 border border-indigo-200 rounded px-2 py-1 mt-1"
-                      >
-                        Run Triage AI
-                      </button>
-                    </form>
+                    <div className="flex flex-col items-end gap-2 shrink-0">
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          className={`px-2 py-0.5 text-xs capitalize ${statusColors[ticket.status] || 'bg-slate-500/10'}`}
+                        >
+                          {ticket.status.replace('_', ' ')}
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          className={`px-2 py-0.5 text-xs capitalize ${priorityColors[ticket.priority] || ''}`}
+                        >
+                          {ticket.priority}
+                        </Badge>
+                      </div>
+                      <span className="text-xs text-slate-600">
+                        {new Date(ticket.createdAt).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              </li>
-            ))
+                </Link>
+              ))}
+            </div>
           )}
-        </ul>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -278,7 +278,7 @@ const searchTickets = async (call: any, callback: any) => {
 import TicketReply from '../models/TicketReply';
 import { emailSendQueue } from '../queue/index';
 
-const replyTicket = async (call: any, callback: any) => {
+export const replyTicket = async (call: any, callback: any) => {
   const { id, tenantId, body, userId } = call.request;
   const requestId = getRequestId(call);
 
@@ -297,7 +297,7 @@ const replyTicket = async (call: any, callback: any) => {
     const reply = await TicketReply.create({
       tenantId,
       ticketId: id,
-      authorType: 'user', // Or 'agent'
+      authorType: 'human',
       authorId: userId,
       body,
     });

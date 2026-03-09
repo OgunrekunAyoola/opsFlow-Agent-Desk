@@ -408,7 +408,7 @@ export class TicketTriageWorkflow {
           suggestedCategory: categoryResult.category,
           suggestedReply: this.sanitizeReply(replyResult.replyBody),
           summary: `AI Triage: Classified as ${categoryResult.category} with ${priorityResult.priority} priority.`,
-          sentiment: 'neutral',
+          sentiment: categoryResult.sentiment || 'neutral',
           priorityScore: confidence,
           sources: [
             ...kbArticles.map((a) => ({
@@ -557,6 +557,7 @@ export class TicketTriageWorkflow {
     return {
       category,
       reason: `(Mock) Detected keywords in text matching '${category}' category.`,
+      sentiment: 'neutral' as const,
     };
   }
 

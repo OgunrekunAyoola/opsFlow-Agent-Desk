@@ -199,7 +199,11 @@ Output Format:
     subject: string,
     body: string,
     meta?: { tenantId?: string; ticketId?: string },
-  ): Promise<{ category: string; reason: string }> {
+  ): Promise<{
+    category: string;
+    reason: string;
+    sentiment?: 'positive' | 'neutral' | 'negative';
+  }> {
     const prompt = `
       You are an expert support ticket classifier.
       Analyze the following ticket:
@@ -213,9 +217,15 @@ Output Format:
       - general (questions, how-to)
       - other (spam, irrelevant)
 
+      Also analyze the sentiment:
+      - positive
+      - neutral
+      - negative
+
       Return a JSON object with:
       - "category": One of the above strings.
       - "reason": A concise explanation (max 1 sentence).
+      - "sentiment": One of the above sentiment strings.
     `;
 
     return this.generateJSON('classification', prompt, meta);
