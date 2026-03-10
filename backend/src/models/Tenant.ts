@@ -7,6 +7,7 @@ export interface ITenant extends Document {
   inboundSecret?: string;
   ingestApiKey?: string;
   supportEmail?: string;
+  autoTriageOnInbound?: boolean;
   autoReplyEnabled?: boolean;
   autoReplyConfidenceThreshold?: number;
   autoReplySafeCategories?: string[];
@@ -29,6 +30,7 @@ const TenantSchema: Schema = new Schema(
     inboundAddress: { type: String, unique: true, sparse: true },
     inboundSecret: { type: String, unique: true, sparse: true },
     supportEmail: { type: String },
+    autoTriageOnInbound: { type: Boolean, default: false },
     autoReplyEnabled: { type: Boolean, default: false },
     autoReplyConfidenceThreshold: { type: Number, default: 0.9 },
     autoReplySafeCategories: {

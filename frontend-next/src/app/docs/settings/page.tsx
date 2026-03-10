@@ -1,50 +1,68 @@
-"use client";
-
-import Link from "next/link";
+'use client';
+import React from 'react';
+import { Users, Lock, Key } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export default function SettingsDocsPage() {
   return (
-    <div className="container mx-auto px-6 py-10 text-white space-y-8">
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold">Settings</h1>
-        <p className="text-sm text-white/70">
-          Configure auto-replies, API keys, and other workspace-wide defaults.
-        </p>
-      </header>
+    <div className="space-y-8">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <h1 className="text-3xl font-bold tracking-tight text-white mb-4">
+          Settings & Configuration
+        </h1>
+        <p className="text-lg text-zinc-400">Manage your team, security, and global preferences.</p>
+      </motion.div>
 
-      <section className="space-y-3 text-sm">
-        <h2 className="text-base font-semibold">Auto-reply configuration</h2>
-        <p className="text-white/70">
-          In the settings area, you can enable automatic replies for specific categories and
-          set a minimum confidence threshold. When an AI draft meets these criteria,
-          OpsFlow will send the reply automatically and mark the ticket as auto_resolved.
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5, delay: 0.1 }}
+        className="space-y-4"
+      >
+        <h2 className="text-2xl font-semibold text-white flex items-center gap-2">
+          <Users className="text-blue-400" /> Team Management
+        </h2>
+        <p className="text-zinc-400">
+          Invite team members and assign roles. OpsFlow supports Role-Based Access Control (RBAC).
         </p>
-      </section>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="p-4 rounded-lg border border-white/10 bg-zinc-900/30">
+            <h3 className="font-semibold text-white mb-1">Admin</h3>
+            <p className="text-sm text-zinc-400">
+              Full access to settings, billing, and all tickets.
+            </p>
+          </div>
+          <div className="p-4 rounded-lg border border-white/10 bg-zinc-900/30">
+            <h3 className="font-semibold text-white mb-1">Agent</h3>
+            <p className="text-sm text-zinc-400">
+              Can view and reply to tickets. Cannot change global settings.
+            </p>
+          </div>
+        </div>
+      </motion.section>
 
-      <section className="space-y-3 text-sm">
-        <h2 className="text-base font-semibold">Ingestion API key</h2>
-        <p className="text-white/70">
-          Each tenant can generate an ingestion API key used to authenticate calls to the
-          <code className="px-1 py-0.5 rounded bg-white/10 text-[11px]">/tickets/ingest</code>{" "}
-          endpoint. You can rotate the key at any time. After rotation, update any systems
-          that call the ingestion API so they keep working.
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+        className="space-y-4"
+      >
+        <h2 className="text-2xl font-semibold text-white flex items-center gap-2">
+          <Key className="text-yellow-400" /> API Keys
+        </h2>
+        <p className="text-zinc-400">
+          Generate API keys for external integrations. Keep these secret.
         </p>
-        <p className="text-white/70">
-          Only admins can view or rotate the key. All API usage is scoped to your tenant
-          and shows up in dashboard metrics.
-        </p>
-        <p className="text-white/70">
-          See{" "}
-          <Link
-            href="/docs/email-api-ingestion"
-            className="text-cyan-300 hover:text-cyan-200"
-          >
-            Email and API ingestion
-          </Link>{" "}
-          for full request examples.
-        </p>
-      </section>
+        <div className="bg-zinc-950 p-4 rounded border border-white/10">
+          <code className="text-blue-400 text-sm">sk_live_51Mz...</code>
+        </div>
+      </motion.section>
     </div>
   );
 }
-

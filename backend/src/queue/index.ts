@@ -80,3 +80,9 @@ export const integrationSyncQueue: {
 } = shouldUseMock
   ? new MockQueue()
   : new Queue('integration-sync', { connection: buildConnection() });
+
+export const ticketOrchestrationQueue: {
+  add: (name: string, data: any) => Promise<any>;
+} = shouldUseMock
+  ? new MockQueue()
+  : new Queue('ticket-orchestration', { connection: buildConnection() });

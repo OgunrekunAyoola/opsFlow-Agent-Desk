@@ -28,6 +28,7 @@ import {
 } from '../../../../components/ui/Card';
 import { Skeleton } from '../../../../components/ui/Skeleton';
 import { Textarea } from '../../../../components/ui/Textarea';
+import { useToast } from '../../../../context/ToastContext';
 
 interface TicketReply {
   _id: string;
@@ -79,6 +80,7 @@ interface User {
 export default function TicketDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const toast = useToast();
   const [ticket, setTicket] = useState<TicketDetail | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -154,17 +156,17 @@ export default function TicketDetailPage() {
         body: JSON.stringify({ body: replyBody }),
       });
       if (!res.ok) {
-        // Show error toast ideally
-        console.error('Failed to send reply');
+        toast.error('Failed to send reply');
       } else {
         setReplyBody('');
         const next = await fetchWithAccess<TicketDetail>(`/tickets/${id}`);
         if (next.ok) {
           setTicket(next.data || null);
         }
+        toast.success('Reply sent');
       }
     } catch (err) {
-      console.error(err);
+      toast.error('Failed to send reply');
     } finally {
       setSendingReply(false);
     }
@@ -180,14 +182,17 @@ export default function TicketDetailPage() {
       });
       if (!res.ok) {
         setError('Unable to run AI triage on this ticket.');
+        toast.error('AI triage failed');
       } else {
         const next = await fetchWithAccess<TicketDetail>(`/tickets/${id}`);
         if (next.ok) {
           setTicket(next.data || null);
         }
+        toast.success('AI triage completed');
       }
     } catch {
       setError('Something went wrong while running AI triage.');
+      toast.error('AI triage failed');
     } finally {
       setRunningTriage(false);
     }
@@ -204,14 +209,17 @@ export default function TicketDetailPage() {
       });
       if (!res.ok) {
         setError('Unable to send reply using the AI suggestion.');
+        toast.error('Failed to send AI reply');
       } else {
         const next = await fetchWithAccess<TicketDetail>(`/tickets/${id}`);
         if (next.ok) {
           setTicket(next.data || null);
         }
+        toast.success('Reply sent using AI suggestion');
       }
     } catch {
       setError('Something went wrong while sending the reply.');
+      toast.error('Failed to send AI reply');
     } finally {
       setUsingSuggestion(false);
     }

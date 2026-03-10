@@ -290,48 +290,56 @@ function DashboardPageInner() {
 
       {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Tickets</CardTitle>
-            <Ticket className="h-4 w-4 text-slate-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalTickets}</div>
-            <p className="text-xs text-slate-400">All time</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Open Tickets</CardTitle>
-            <Clock className="h-4 w-4 text-slate-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{openTickets}</div>
-            <p className="text-xs text-slate-400">
-              {stats.byStatus['new'] || 0} new, {stats.byStatus['awaiting_reply'] || 0} awaiting
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Urgent Attention</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-red-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{urgentTickets}</div>
-            <p className="text-xs text-slate-400">High priority tickets</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
-            <Users className="h-4 w-4 text-slate-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalUsers}</div>
-            <p className="text-xs text-slate-400">Active users</p>
-          </CardContent>
-        </Card>
+        <Link href="/tickets">
+          <Card className="cursor-pointer transition-colors hover:border-slate-700">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Tickets</CardTitle>
+              <Ticket className="h-4 w-4 text-slate-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.totalTickets}</div>
+              <p className="text-xs text-slate-400">All time</p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/tickets">
+          <Card className="cursor-pointer transition-colors hover:border-slate-700">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Open Tickets</CardTitle>
+              <Clock className="h-4 w-4 text-slate-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{openTickets}</div>
+              <p className="text-xs text-slate-400">
+                {stats.byStatus['new'] || 0} new, {stats.byStatus['awaiting_reply'] || 0} awaiting
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/tickets">
+          <Card className="cursor-pointer transition-colors hover:border-slate-700">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Urgent Attention</CardTitle>
+              <AlertTriangle className="h-4 w-4 text-red-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{urgentTickets}</div>
+              <p className="text-xs text-slate-400">High priority tickets</p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/clients">
+          <Card className="cursor-pointer transition-colors hover:border-slate-700">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
+              <Users className="h-4 w-4 text-slate-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.totalUsers}</div>
+              <p className="text-xs text-slate-400">Active users</p>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       {/* AI Performance */}

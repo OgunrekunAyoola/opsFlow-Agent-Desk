@@ -77,13 +77,14 @@ router.get('/ai-config', requireAuth, requireAdmin, async (req, res) => {
   const { tenantId } = (req as any).currentUser;
   const tenant = await Tenant.findById(tenantId)
     .select(
-      'autoReplyEnabled autoReplyConfidenceThreshold autoReplySafeCategories aiDraftEnabled aiUsePastTickets',
+      'autoTriageOnInbound autoReplyEnabled autoReplyConfidenceThreshold autoReplySafeCategories aiDraftEnabled aiUsePastTickets',
     )
     .exec();
 
   if (!tenant) return res.status(404).json({ error: 'not_found' });
 
   res.json({
+    autoTriageOnInbound: tenant.autoTriageOnInbound,
     autoReplyEnabled: tenant.autoReplyEnabled,
     autoReplyConfidenceThreshold: tenant.autoReplyConfidenceThreshold,
     autoReplySafeCategories: tenant.autoReplySafeCategories,
@@ -95,6 +96,7 @@ router.get('/ai-config', requireAuth, requireAdmin, async (req, res) => {
 router.post('/ai-config', requireAuth, requireAdmin, async (req, res) => {
   const { tenantId } = (req as any).currentUser;
   const {
+    autoTriageOnInbound,
     autoReplyEnabled,
     autoReplyConfidenceThreshold,
     autoReplySafeCategories,
@@ -105,6 +107,7 @@ router.post('/ai-config', requireAuth, requireAdmin, async (req, res) => {
   const tenant = await Tenant.findByIdAndUpdate(
     tenantId,
     {
+      autoTriageOnInbound,
       autoReplyEnabled,
       autoReplyConfidenceThreshold,
       autoReplySafeCategories,

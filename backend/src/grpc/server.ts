@@ -4,8 +4,9 @@ import path from 'path';
 import logger from '../utils/logger';
 import Ticket from '../models/Ticket';
 import mongoose from 'mongoose';
-import { TicketTriageWorkflow } from '../services/TicketTriageWorkflow';
 import { RAGService } from '../services/RAGService';
+import { ticketOrchestrationQueue, emailSendQueue } from '../queue';
+import TicketReply from '../models/TicketReply';
 
 const PROTO_PATH = path.resolve(__dirname, '../proto/ticket.proto');
 
@@ -191,19 +192,11 @@ const triageTicket = async (call: any, callback: any) => {
     }
 
     // Trigger workflow asynchronously
-    const workflow = new TicketTriageWorkflow();
-    workflow
-      .run({
-        tenantId,
-        ticketId: id,
-        startedByUserId: userId,
-      })
-      .catch((err) => {
-        logger.error(`[gRPC] Triage Workflow Failed Async: ${err.message}`, {
-          requestId,
-          error: err,
-        });
-      });
+    ticketOrchestrationQueue.add('triage', {
+      tenantId,
+      ticketId: id,
+      startedByUserId: userId,
+    });
 
     // Update ticket status to indicate processing
     ticket.status = 'triaging';
@@ -274,9 +267,6 @@ const searchTickets = async (call: any, callback: any) => {
     });
   }
 };
-
-import TicketReply from '../models/TicketReply';
-import { emailSendQueue } from '../queue/index';
 
 export const replyTicket = async (call: any, callback: any) => {
   const { id, tenantId, body, userId } = call.request;

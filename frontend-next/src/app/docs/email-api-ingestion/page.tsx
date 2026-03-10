@@ -1,75 +1,111 @@
-"use client";
+'use client';
+import React from 'react';
+import { Mail, ArrowRightLeft, Server } from 'lucide-react';
+import { motion } from 'framer-motion';
 
-import Link from "next/link";
-
-export default function EmailApiIngestionPage() {
+export default function EmailIngestionDocsPage() {
   return (
-    <div className="container mx-auto px-6 py-10 text-white space-y-8">
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold">Email and API ingestion</h1>
-        <p className="text-sm text-white/70">
-          Get customer messages into OpsFlow from email, your own backend, or embedded chat.
+    <div className="space-y-8">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <h1 className="text-3xl font-bold tracking-tight text-white mb-4">Email Integration</h1>
+        <p className="text-lg text-zinc-400">
+          Connect your support email to start processing tickets.
         </p>
-      </header>
+      </motion.div>
 
-      <section className="space-y-4 text-sm">
-        <h2 className="text-base font-semibold">Email forwarding</h2>
-        <p className="text-white/70">
-          Configure your support inbox to forward messages into OpsFlow. Each inbound email
-          becomes a ticket with the sender&apos;s address and message body attached. Duplicate
-          messages are deduplicated using the email message-id when provided.
-        </p>
-      </section>
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5, delay: 0.1 }}
+        className="space-y-4"
+      >
+        <h2 className="text-2xl font-semibold text-white">Setup Methods</h2>
+        <div className="grid gap-4">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="p-6 rounded-xl border border-white/10 bg-zinc-900/30 flex gap-4"
+          >
+            <div className="p-3 rounded-lg bg-blue-500/10 h-fit">
+              <ArrowRightLeft className="w-6 h-6 text-blue-400" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-white mb-1">Email Forwarding (Recommended)</h3>
+              <p className="text-zinc-400 text-sm mb-4">
+                Set up a forwarding rule in Gmail/Outlook to send emails to your unique OpsFlow
+                address.
+              </p>
+              <div className="bg-black rounded border border-white/10 p-3 font-mono text-xs text-zinc-300">
+                support@your-tenant.opsflow.ai
+              </div>
+            </div>
+          </motion.div>
 
-      <section className="space-y-4 text-sm">
-        <h2 className="text-base font-semibold">Generic ingestion API</h2>
-        <p className="text-white/70">
-          Use the ingestion API to create tickets from your own systems. Authenticate using
-          the tenant API key and send a simple JSON payload.
-        </p>
-        <div className="rounded-2xl border border-white/10 bg-slate-950/80 p-4 space-y-3 text-xs">
-          <div className="flex items-center justify-between">
-            <span className="font-semibold text-white/90">POST /tickets/ingest</span>
-            <span className="text-white/60">tenant-scoped API key</span>
-          </div>
-          <pre className="whitespace-pre-wrap text-white/80">
-{`Headers:
-  x-opsflow-key: YOUR_API_KEY
-
-Body (JSON):
-  {
-    "subject": "Short summary",
-    "body": "Full description of the issue",
-    "customerName": "Optional name",
-    "customerEmail": "Optional email",
-    "externalId": "Optional id from your system",
-    "channel": "chat | email"
-  }`}
-          </pre>
-          <p className="text-white/60">
-            Requests with the same externalId for a tenant will re-use the existing ticket
-            instead of creating duplicates.
-          </p>
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="p-6 rounded-xl border border-white/10 bg-zinc-900/30 flex gap-4"
+          >
+            <div className="p-3 rounded-lg bg-violet-500/10 h-fit">
+              <Server className="w-6 h-6 text-violet-400" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-white mb-1">IMAP / SMTP</h3>
+              <p className="text-zinc-400 text-sm">
+                Connect directly to your mail server. Requires providing credentials.
+              </p>
+            </div>
+          </motion.div>
         </div>
-      </section>
+      </motion.section>
 
-      <section className="space-y-4 text-sm">
-        <h2 className="text-base font-semibold">Lightweight chat widget</h2>
-        <p className="text-white/70">
-          OpsFlow ships with a minimal chat-style form at <code className="px-1 py-0.5 rounded bg-white/10 text-[11px]">/widget/chat</code>.
-          You can embed it in your app or proxy requests through your own frontend if you
-          prefer full control.
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5, delay: 0.4 }}
+        className="space-y-4"
+      >
+        <h2 className="text-2xl font-semibold text-white flex items-center gap-2">
+          <Mail className="text-emerald-400" /> Outbound Emails
+        </h2>
+        <p className="text-zinc-400">
+          To ensure emails land in customers' inboxes, you should configure SPF and DKIM records if
+          using a custom domain.
         </p>
-      </section>
-
-      <div className="pt-4 border-t border-white/10 text-xs text-white/60">
-        Continue to{" "}
-        <Link href="/docs/knowledge-base" className="text-cyan-300 hover:text-cyan-200">
-          Knowledge base
-        </Link>{" "}
-        to see how AI uses your docs once tickets are ingested.
-      </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-left text-sm text-zinc-400">
+            <thead className="border-b border-white/10 text-white">
+              <tr>
+                <th className="py-2">Type</th>
+                <th className="py-2">Host</th>
+                <th className="py-2">Value</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              <tr>
+                <td className="py-2">TXT</td>
+                <td className="py-2">@</td>
+                <td className="py-2 font-mono text-xs">v=spf1 include:opsflow.ai ~all</td>
+              </tr>
+              <tr>
+                <td className="py-2">CNAME</td>
+                <td className="py-2">opsflow._domainkey</td>
+                <td className="py-2 font-mono text-xs">dkim.opsflow.ai</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </motion.section>
     </div>
   );
 }
-

@@ -1,57 +1,112 @@
-"use client";
+'use client';
+import React from 'react';
+import { Bot, BrainCircuit, MessageSquare, ShieldAlert } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export default function AiCopilotDocsPage() {
   return (
-    <div className="container mx-auto px-6 py-10 text-white space-y-8">
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold">AI copilot</h1>
-        <p className="text-sm text-white/70">
-          How OpsFlow triages tickets, drafts replies, and when it is allowed to send
-          messages.
+    <div className="space-y-8">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <h1 className="text-3xl font-bold tracking-tight text-white mb-4">AI Copilot</h1>
+        <p className="text-lg text-zinc-400">
+          Understand how OpsFlow's autonomous agents triage tickets, draft replies, and execute
+          actions.
         </p>
-      </header>
+      </motion.div>
 
-      <section className="space-y-3 text-sm">
-        <h2 className="text-base font-semibold">AI triage</h2>
-        <p className="text-white/70">
-          From a ticket, click Run triage in the sidebar. OpsFlow will classify the ticket,
-          choose a priority, suggest an assignee, and generate a draft reply using your
-          knowledge base.
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5, delay: 0.1 }}
+        className="space-y-4"
+      >
+        <h2 className="text-2xl font-semibold text-white flex items-center gap-2">
+          <BrainCircuit className="text-blue-400" /> AI Triage
+        </h2>
+        <p className="text-zinc-400">
+          When a new ticket arrives, the Triage Agent analyzes the content to determine:
         </p>
-      </section>
+        <ul className="list-disc pl-6 space-y-2 text-zinc-400">
+          <li>
+            <strong>Intent:</strong> What does the customer want? (e.g., Refund, Support, Feature
+            Request)
+          </li>
+          <li>
+            <strong>Sentiment:</strong> Is the customer angry, happy, or neutral?
+          </li>
+          <li>
+            <strong>Priority:</strong> How urgent is this request?
+          </li>
+          <li>
+            <strong>Category:</strong> Which department should handle this?
+          </li>
+        </ul>
+        <div className="bg-zinc-900/50 border border-white/10 rounded-lg p-4 text-sm text-zinc-300">
+          The Triage Agent runs automatically on every new ticket. You can view the analysis in the
+          "AI Insights" panel on the ticket detail page.
+        </div>
+      </motion.section>
 
-      <section className="space-y-3 text-sm">
-        <h2 className="text-base font-semibold">Draft replies and confidence</h2>
-        <p className="text-white/70">
-          The AI panel shows a draft reply along with a confidence label. Confidence is
-          based on how well the ticket matches historical patterns and your knowledge base
-          content. You can always edit the draft before sending or choose to ignore it.
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+        className="space-y-4"
+      >
+        <h2 className="text-2xl font-semibold text-white flex items-center gap-2">
+          <MessageSquare className="text-violet-400" /> Draft Replies & Confidence
+        </h2>
+        <p className="text-zinc-400">
+          The Response Agent drafts a reply based on your Knowledge Base and previous resolved
+          tickets. Each draft comes with a <strong>Confidence Score</strong> (0-100%).
         </p>
-      </section>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+            <div className="font-semibold text-green-400 mb-1">High (&gt;90%)</div>
+            <div className="text-sm text-zinc-400">Safe for auto-reply if enabled.</div>
+          </div>
+          <div className="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+            <div className="font-semibold text-yellow-400 mb-1">Medium (50-90%)</div>
+            <div className="text-sm text-zinc-400">Requires human review.</div>
+          </div>
+          <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20">
+            <div className="font-semibold text-red-400 mb-1">Low (&lt;50%)</div>
+            <div className="text-sm text-zinc-400">Agent will ask for clarification.</div>
+          </div>
+        </div>
+      </motion.section>
 
-      <section className="space-y-3 text-sm">
-        <h2 className="text-base font-semibold">Auto-replies</h2>
-        <p className="text-white/70">
-          If you enable auto-replies for certain categories in settings, OpsFlow can send
-          an email reply automatically when confidence is above your configured threshold.
-          Tickets resolved this way are marked as auto_resolved and still appear in
-          reporting.
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5, delay: 0.3 }}
+        className="space-y-4"
+      >
+        <h2 className="text-2xl font-semibold text-white flex items-center gap-2">
+          <Bot className="text-emerald-400" /> Auto-Replies
+        </h2>
+        <p className="text-zinc-400">
+          You can configure OpsFlow to automatically send replies when the confidence score meets a
+          certain threshold (e.g., 95%) and the category is deemed "Safe" (e.g., "General Inquiry").
         </p>
-        <p className="text-white/70">
-          Even with auto-replies, the AI uses your knowledge base and your tenant-scoped
-          data only.
-        </p>
-      </section>
-
-      <section className="space-y-3 text-sm">
-        <h2 className="text-base font-semibold">Human in the loop</h2>
-        <p className="text-white/70">
-          Outside of configured auto-reply thresholds, AI never sends messages on its own.
-          A human must click to send the suggestion as a reply. This is especially useful
-          while you are still tuning the knowledge base and categories.
-        </p>
-      </section>
+        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+          <h4 className="font-semibold text-blue-400 mb-2 flex items-center gap-2">
+            <ShieldAlert className="w-4 h-4" /> Safety First
+          </h4>
+          <p className="text-sm text-blue-200/80">
+            Auto-replies are disabled by default. You must explicitly enable them in{' '}
+            <strong>Settings &gt; AI Configuration</strong>. We recommend running in "Draft Only"
+            mode for the first week.
+          </p>
+        </div>
+      </motion.section>
     </div>
   );
 }
-

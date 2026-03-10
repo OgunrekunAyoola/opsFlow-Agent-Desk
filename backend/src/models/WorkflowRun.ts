@@ -13,7 +13,7 @@ export interface IWorkflowRun extends Document {
 
 const WorkflowRunSchema: Schema = new Schema({
   tenantId: { type: Schema.Types.ObjectId, ref: 'Tenant', required: true, index: true },
-  type: { type: String, enum: ['ticket_triage'], required: true },
+  type: { type: String, enum: ['ticket_triage', 'agent_orchestration'], required: true },
   ticketId: { type: Schema.Types.ObjectId, ref: 'Ticket', required: true, index: true },
   status: { type: String, enum: ['running', 'succeeded', 'failed'], default: 'running' },
   startedByUserId: { type: Schema.Types.ObjectId, ref: 'User' },

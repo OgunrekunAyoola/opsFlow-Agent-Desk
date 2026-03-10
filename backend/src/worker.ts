@@ -4,6 +4,7 @@ import TicketReply from './models/TicketReply';
 import { EmailService } from './services/EmailService';
 import { ResolvedTicketEmbeddingService } from './services/ResolvedTicketEmbeddingService';
 import mongoose from 'mongoose';
+import { TicketOrchestrator } from './core/orchestrator/TicketOrchestrator';
 import { executeIntegrationSync } from './services/IntegrationSyncService';
 
 function buildConnection() {
@@ -95,6 +96,23 @@ async function start() {
     { connection: buildConnection(), concurrency: 2 },
   );
   integrationWorker.on('failed', () => {});
+
+  const orchestrationWorker = new Worker(
+    'ticket-orchestration',
+    async (job) => {
+      console.log(`[OrchestrationWorker] Processing job ${job.id}`);
+      const { tenantId, ticketId, startedByUserId } = job.data;
+      const orchestrator = new TicketOrchestrator();
+      await orchestrator.runPipeline(tenantId, ticketId, startedByUserId);
+    },
+    {
+      connection: buildConnection(),
+      concurrency: Number(process.env.ORCHESTRATION_CONCURRENCY || 5),
+    },
+  );
+  orchestrationWorker.on('failed', (job, err) => {
+    console.error(`[OrchestrationWorker] Job ${job?.id} failed: ${err.message}`);
+  });
 }
 
 start().catch(async () => {

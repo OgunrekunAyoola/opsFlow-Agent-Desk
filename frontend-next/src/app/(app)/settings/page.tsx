@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { fetchWithAccess } from '../../../lib/auth-client';
+import { useToast } from '../../../context/ToastContext';
 
 type CategoryKey = 'billing' | 'bug' | 'feature';
 
@@ -17,6 +18,7 @@ interface MeResponse {
   user?: { role?: string };
   tenant?: {
     supportEmail?: string;
+    autoTriageOnInbound?: boolean;
     autoReplyEnabled?: boolean;
     autoReplyConfidenceThreshold?: number;
     autoReplySafeCategories?: string[];
@@ -27,8 +29,10 @@ interface MeResponse {
 
 export default function SettingsPage() {
   const router = useRouter();
+  const toast = useToast();
   const [role, setRole] = useState<string | null>(null);
   const [supportEmail, setSupportEmail] = useState('');
+  const [autoTriageOnInbound, setAutoTriageOnInbound] = useState(false);
   const [autoReply, setAutoReply] = useState<AutoReplySettings>({
     autoReplyEnabled: false,
     autoReplyConfidenceThreshold: 0.8,
@@ -78,6 +82,7 @@ export default function SettingsPage() {
             supportEmail?: string;
           }>('/settings/email-config'),
           fetchWithAccess<{
+            autoTriageOnInbound: boolean;
             autoReplyEnabled: boolean;
             autoReplyConfidenceThreshold: number;
             autoReplySafeCategories: string[];
@@ -96,6 +101,7 @@ export default function SettingsPage() {
         }
 
         if (aiRes.ok && aiRes.data) {
+          setAutoTriageOnInbound(!!aiRes.data.autoTriageOnInbound);
           setAutoReply({
             autoReplyEnabled: aiRes.data.autoReplyEnabled,
             autoReplyConfidenceThreshold: aiRes.data.autoReplyConfidenceThreshold,
@@ -106,6 +112,7 @@ export default function SettingsPage() {
         } else if (me?.tenant) {
           // Fallback to /me data if specific endpoint fails (or not deployed yet)
           if (me.tenant.supportEmail) setSupportEmail(me.tenant.supportEmail);
+          setAutoTriageOnInbound(!!me.tenant.autoTriageOnInbound);
           setAutoReply({
             autoReplyEnabled: !!me.tenant.autoReplyEnabled,
             autoReplyConfidenceThreshold: me.tenant.autoReplyConfidenceThreshold ?? 0.8,
@@ -152,6 +159,7 @@ export default function SettingsPage() {
       fetchWithAccess('/settings/ai-config', {
         method: 'POST',
         body: JSON.stringify({
+          autoTriageOnInbound,
           autoReplyEnabled: autoReply.autoReplyEnabled,
           autoReplyConfidenceThreshold: autoReply.autoReplyConfidenceThreshold,
           autoReplySafeCategories: autoReply.autoReplySafeCategories,
@@ -178,12 +186,14 @@ export default function SettingsPage() {
         router.push('/login');
       } else {
         setError('Failed to save settings.');
+        toast.error('Failed to save settings');
       }
       setSaving(false);
       return;
     }
 
     setSaveMessage('Settings saved.');
+    toast.success('Settings saved');
     setSaving(false);
   }
 
@@ -326,6 +336,22 @@ export default function SettingsPage() {
           <div className="flex items-center gap-3">
             <button
               type="button"
+              onClick={() => setAutoTriageOnInbound((v) => !v)}
+              className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium border ${
+                autoTriageOnInbound
+                  ? 'bg-emerald-500 text-slate-950 border-emerald-400'
+                  : 'bg-white/5 text-white border-white/20'
+              } ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+            >
+              {autoTriageOnInbound ? 'Auto triage on inbound: On' : 'Auto triage on inbound: Off'}
+            </button>
+            <p className="text-xs text-white/60">
+              Run triage automatically when tickets are ingested.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
               onClick={() => setAiDraftEnabled((v) => !v)}
               className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium border ${
                 aiDraftEnabled
@@ -425,10 +451,12 @@ export default function SettingsPage() {
                       router.push('/login');
                     } else {
                       setError('Failed to rotate API key.');
+                      toast.error('Failed to rotate API key');
                     }
                   } else {
                     setApiKey(res.data?.apiKey ?? null);
                     setSaveMessage('API key rotated.');
+                    toast.success('API key rotated');
                   }
                 } finally {
                   setRotatingKey(false);

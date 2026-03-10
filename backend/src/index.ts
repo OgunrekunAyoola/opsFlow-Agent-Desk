@@ -13,6 +13,7 @@ import { auth } from './auth';
 import usersRouter from './routes/users';
 import ticketsRouter from './routes/tickets';
 import dashboardRouter from './routes/dashboard';
+import clientsRouter from './routes/clients';
 import emailRouter from './routes/email';
 import actionsRouter from './routes/actions';
 import eventsRouter from './routes/events';
@@ -104,6 +105,7 @@ app.use('/auth', authRouter);
 app.use('/users', usersRouter);
 app.use('/tickets', ticketsRouter);
 app.use('/dashboard', dashboardRouter);
+app.use('/clients', clientsRouter);
 
 app.use('/integrations', integrationsRouter);
 app.use('/email', emailRouter);

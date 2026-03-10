@@ -3,6 +3,8 @@ import crypto from 'crypto';
 import Tenant from '../models/Tenant';
 import Ticket from '../models/Ticket';
 import Client from '../models/Client';
+import { TicketOrchestrator } from '../core/orchestrator/TicketOrchestrator';
+import { shouldUseMock, ticketOrchestrationQueue } from '../queue';
 
 const router = Router();
 
@@ -83,6 +85,19 @@ router.post('/inbound', async (req, res) => {
   });
 
   const populated = await Ticket.findById(ticket._id).populate('clientId', 'name domain').exec();
+  try {
+    if (tenant.autoTriageOnInbound) {
+      if (shouldUseMock) {
+        const orchestrator = new TicketOrchestrator();
+        orchestrator.runPipeline(tenant._id.toString(), ticket._id.toString()).catch(() => {});
+      } else {
+        await ticketOrchestrationQueue.add('triage', {
+          tenantId: tenant._id.toString(),
+          ticketId: ticket._id.toString(),
+        });
+      }
+    }
+  } catch {}
   res.status(201).json({ ticket: populated });
 });
 

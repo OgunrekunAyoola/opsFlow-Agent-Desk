@@ -9,6 +9,8 @@ import User from '../models/User';
 import Notification from '../models/Notification';
 import { EmailService } from '../services/EmailService';
 import { emailSendQueue, resolvedSnippetQueue } from '../queue/index';
+import { TicketOrchestrator } from '../core/orchestrator/TicketOrchestrator';
+import { shouldUseMock, ticketOrchestrationQueue } from '../queue';
 import UserAction from '../models/UserAction';
 import Tenant from '../models/Tenant';
 import { ResolvedTicketEmbeddingService } from '../services/ResolvedTicketEmbeddingService';
@@ -177,6 +179,20 @@ router.post('/ingest/email', requireAuth, async (req, res) => {
     category: 'general',
   });
   const populated = await Ticket.findById(ticket._id).populate('clientId', 'name domain').exec();
+  try {
+    const tenant = await Tenant.findById(tenantId).exec();
+    if (tenant?.autoTriageOnInbound) {
+      if (shouldUseMock) {
+        const orchestrator = new TicketOrchestrator();
+        orchestrator.runPipeline(tenantId.toString(), ticket._id.toString()).catch(() => {});
+      } else {
+        await ticketOrchestrationQueue.add('triage', {
+          tenantId: tenantId.toString(),
+          ticketId: ticket._id.toString(),
+        });
+      }
+    }
+  } catch {}
   res.status(201).json({ ticket: populated });
 });
 
@@ -225,6 +241,19 @@ router.post('/ingest', async (req, res) => {
 
     const populated = await Ticket.findById(ticket._id).populate('clientId', 'name domain').exec();
 
+    try {
+      if (tenant.autoTriageOnInbound) {
+        if (shouldUseMock) {
+          const orchestrator = new TicketOrchestrator();
+          orchestrator.runPipeline(tenant._id.toString(), ticket._id.toString()).catch(() => {});
+        } else {
+          await ticketOrchestrationQueue.add('triage', {
+            tenantId: tenant._id.toString(),
+            ticketId: ticket._id.toString(),
+          });
+        }
+      }
+    } catch {}
     res.status(201).json({ ticket: populated });
   } catch {
     res.status(500).json({ error: 'failed_to_ingest_ticket' });
@@ -420,7 +449,6 @@ router.patch('/:id', requireAuth, async (req, res) => {
   res.json(ticket);
 });
 
-import { TicketTriageWorkflow } from '../services/TicketTriageWorkflow';
 import WorkflowRun from '../models/WorkflowRun';
 import WorkflowStep from '../models/WorkflowStep';
 import LlmCallLog from '../models/LlmCallLog';
@@ -572,13 +600,9 @@ router.post('/:id/workflows/triage', requireAuth, async (req, res) => {
     return res.status(429).json({ error: 'ai_rate_limited' });
   }
 
-  const workflow = new TicketTriageWorkflow();
+  const orchestrator = new TicketOrchestrator();
   try {
-    const result = await workflow.run({
-      tenantId,
-      ticketId: id as string,
-      startedByUserId: userId,
-    });
+    const result = await orchestrator.runPipeline(tenantId, id as string, userId);
     res.json(result);
   } catch (err: any) {
     console.error('Workflow failed:', err);
