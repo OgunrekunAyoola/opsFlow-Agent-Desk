@@ -37,7 +37,7 @@ export const tokens = {
   },
   easing: {
     spring: 'cubic-bezier(0.16, 1, 0.3, 1)',
-    duration: '500ms',
+    duration: 0.5,
   },
   radius: {
     sharp: '4px',

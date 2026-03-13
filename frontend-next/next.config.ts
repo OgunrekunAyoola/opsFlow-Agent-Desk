@@ -10,10 +10,4 @@ export default withSentryConfig(nextConfig, {
   silent: true,
   org: "opsflow",
   project: "frontend",
-}, {
-  widenClientFileUpload: true,
-  transpileClientSDK: true,
-  tunnelRoute: "/monitoring",
-  hideSourceMaps: true,
-  disableLogger: true,
 });
