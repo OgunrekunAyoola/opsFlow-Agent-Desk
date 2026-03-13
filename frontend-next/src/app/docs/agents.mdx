@@ -1,0 +1,29 @@
+# Specialized Agents
+
+OpsFlowAI uses a multi-agent system where each agent is specialized for a specific task.
+
+## TriageAgent
+
+The TriageAgent is the first entry point. It uses Gemini to classify the ticket.
+
+<ApiTable data={[
+  { name: "category", type: "string", desc: "Refund, Technical, billing, etc.", required: true },
+  { name: "priority", type: "string", desc: "low, normal, high, urgent.", required: true },
+  { name: "sentiment", type: "string", desc: "Positive, neutral, negative." }
+]} />
+
+## RAGAgent
+
+The RAGAgent performs Retrieval Augmented Generation to find relevant context from your knowledge base.
+
+<Callout type="success">
+  RAGAgent significantly reduces hallucinations by grounding responses in your actual documentation.
+</Callout>
+
+## QualityAgent
+
+The QualityAgent reviews the drafted response and assigns a confidence score.
+
+<Callout type="warning">
+  If the QualityAgent score is below the tenant threshold, the ticket is flagged for human review.
+</Callout>

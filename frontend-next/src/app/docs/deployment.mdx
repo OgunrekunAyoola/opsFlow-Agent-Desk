@@ -1,0 +1,37 @@
+# Deployment
+
+OpsFlowAI can be deployed to your own infrastructure for maximum control and data privacy.
+
+## Railway
+
+The fastest way to deploy for small to medium teams.
+
+<CodeBlock 
+  language="bash" 
+  code="railway up" 
+/>
+
+## Docker
+
+Every OpsFlowAI release is published as a Docker image.
+
+<CodeBlock 
+  language="yaml" 
+  code="services:
+  opsflow-agent:
+    image: opsflow/agent-desk:latest
+    ports:
+      - '3000:3000'
+    environment:
+      - DATABASE_URL=${DATABASE_URL}" 
+/>
+
+## Environment Variables
+
+Configure your instance with these environment variables.
+
+<ApiTable data={[
+  { name: "DATABASE_URL", type: "string", desc: "Your MongoDB connection string.", required: true },
+  { name: "GEMINI_API_KEY", type: "string", desc: "Your Google Gemini API Key.", required: true },
+  { name: "AUTH_SECRET", type: "string", desc: "Secure secret for better-auth.", required: true }
+]} />

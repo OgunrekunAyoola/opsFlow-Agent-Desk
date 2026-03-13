@@ -9,32 +9,54 @@ const docsNav = [
   {
     title: 'Getting Started',
     items: [
-      { title: 'Introduction', href: '/docs' },
-      { title: 'Quickstart', href: '/docs/getting-started' },
       { title: 'Installation', href: '/docs/installation' },
+      { title: 'Quick Start', href: '/docs/introduction' },
+      { title: 'Environment Variables', href: '/docs/environment-variables' },
     ],
   },
   {
     title: 'Core Concepts',
     items: [
-      { title: 'AI Copilot', href: '/docs/ai-copilot' },
-      { title: 'Workflows', href: '/docs/workflows' },
-      { title: 'Knowledge Base', href: '/docs/knowledge-base' },
-      { title: 'Email Ingestion', href: '/docs/email-api-ingestion' },
-      { title: 'Integrations', href: '/docs/integrations' },
+      { title: 'Agent Pipeline', href: '/docs/pipeline' },
+      { title: 'PipelineContext', href: '/docs/context' },
+      { title: 'How Triage Works', href: '/docs/triage' },
+    ],
+  },
+  {
+    title: 'Agents',
+    items: [
+      { title: 'TriageAgent', href: '/docs/agents#triage' },
+      { title: 'EnrichmentAgent', href: '/docs/agents#enrichment' },
+      { title: 'RAGAgent', href: '/docs/agents#rag' },
+      { title: 'ActionAgent', href: '/docs/agents#action' },
+      { title: 'ResponseAgent', href: '/docs/agents#response' },
+      { title: 'QualityAgent', href: '/docs/agents#quality' },
     ],
   },
   {
     title: 'API Reference',
     items: [
-      { title: 'Authentication', href: '/docs/api/auth' },
-      { title: 'Tickets', href: '/docs/api/tickets' },
-      { title: 'Webhooks', href: '/docs/api/webhooks' },
+      { title: 'Authentication', href: '/docs/api#auth' },
+      { title: 'Tickets', href: '/docs/api#tickets' },
+      { title: 'Webhooks', href: '/docs/api#webhooks' },
+      { title: 'Analytics', href: '/docs/api#analytics' },
     ],
   },
   {
-    title: 'Settings',
-    items: [{ title: 'General', href: '/docs/settings' }],
+    title: 'Integrations',
+    items: [
+      { title: 'Email Setup', href: '/docs/integrations#email' },
+      { title: 'CRM', href: '/docs/integrations#crm' },
+      { title: 'Billing', href: '/docs/integrations#billing' },
+    ],
+  },
+  {
+    title: 'Deployment',
+    items: [
+      { title: 'Railway', href: '/docs/deployment#railway' },
+      { title: 'Docker', href: '/docs/deployment#docker' },
+      { title: 'Environment Variables', href: '/docs/deployment#env' },
+    ],
   },
 ];
 
@@ -64,8 +86,8 @@ export function DocsSidebar() {
                   <Link
                     href={item.href}
                     className={cn(
-                      'block rounded-md px-2 py-1.5 text-sm font-medium transition-colors hover:text-blue-400',
-                      pathname === item.href ? 'bg-blue-500/10 text-blue-400' : 'text-zinc-400',
+                      'block rounded-md px-2 py-1.5 text-sm font-medium transition-colors hover:text-accent',
+                      pathname === item.href ? 'bg-accent/10 text-accent border-l-2 border-accent' : 'text-zinc-400',
                     )}
                   >
                     {item.title}

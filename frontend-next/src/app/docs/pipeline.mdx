@@ -1,0 +1,38 @@
+# Agent Pipeline
+
+The Agent Pipeline is the core of OpsFlowAI. It orchestrates multiple specialized AI agents to process a ticket from ingestion to resolution.
+
+## How it Works
+
+When a ticket is received, the `TicketOrchestrator` initializes a `PipelineContext` and executes the agents in a predefined sequence.
+
+<Steps>
+  <Step number={1} title="Triage">
+    The TriageAgent analyzes the ticket category, priority, and sentiment.
+  </Step>
+  <Step number={2} title="Enrichment">
+    The EnrichmentAgent pulls customer data from your CRM and previous interactions.
+  </Step>
+  <Step number={3} title="RAG Retrieval">
+    The RAGAgent fetches the most relevant snippets from your knowledge base.
+  </Step>
+  <Step number={4} title="Response Drafting">
+    The ResponseAgent generates a personalized reply based on all gathered context.
+  </Step>
+</Steps>
+
+## Pipeline Context
+
+Every agent receives and returns the `PipelineContext` object, ensuring seamless data flow.
+
+<ApiTable data={[
+  { name: "tenantId", type: "string", desc: "The ID of the organization.", required: true },
+  { name: "ticketId", type: "string", desc: "The ID of the ticket being processed.", required: true },
+  { name: "classification", type: "object", desc: "Category, priority, and sentiment data from TriageAgent." },
+  { name: "rag", type: "object", desc: "Retrieved knowledge base snippets." },
+  { name: "response", type: "object", desc: "The generated draft reply and confidence score." }
+]} />
+
+<Callout type="warning">
+  The pipeline is stateful within a single run. Agents should not modify the original ticket directly; they should update the context.
+</Callout>

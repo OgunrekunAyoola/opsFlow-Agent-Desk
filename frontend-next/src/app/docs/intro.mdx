@@ -1,0 +1,45 @@
+# Getting Started
+
+Welcome to OpsFlowAI. This guide will help you get up and running with your autonomous support agent in minutes.
+
+## Overview
+
+OpsFlowAI is an agent-oriented support platform. Unlike traditional helpdesks, OpsFlow puts AI agents at the center of the workflow, allowing you to resolve tickets with 90% less human intervention.
+
+<Callout type="info">
+  OpsFlowAI is currently in public beta. All features are available for testing.
+</Callout>
+
+## Installation
+
+To start using OpsFlowAI, you need to install the agent desk and connect your support channels.
+
+<Steps>
+  <Step number={1} title="Create an account">
+    Sign up for a free account at [opsflow.ai/signup](https://opsflow.ai/signup).
+  </Step>
+  <Step number={2} title="Connect your email">
+    Go to Settings > Integrations and connect your support email (e.g., support@yourcompany.com).
+  </Step>
+  <Step number={3} title="Import your knowledge base">
+    Upload your documentation or sync with your Notion workspace to train your agents.
+  </Step>
+</Steps>
+
+## Your First Ticket
+
+Once connected, OpsFlowAI will automatically start analyzing incoming tickets.
+
+<CodeBlock 
+  language="bash" 
+  code="npm install @opsflow/sdk" 
+/>
+
+## Agent Pipeline
+
+Every ticket flows through our multi-agent pipeline:
+
+1. **TriageAgent**: Classifies and prioritizes.
+2. **EnrichmentAgent**: Gathers context from CRM and previous tickets.
+3. **RAGAgent**: Fetches relevant knowledge base snippets.
+4. **ResponseAgent**: Drafts the final reply.
