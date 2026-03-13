@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import dotenv from 'dotenv';
+import logger from '../shared/utils/logger';
 
 dotenv.config();
 
@@ -19,7 +20,7 @@ export function encrypt(text: string): string {
     encrypted = Buffer.concat([encrypted, cipher.final()]);
     return iv.toString('hex') + ':' + encrypted.toString('hex');
   } catch (err) {
-    console.error('Encryption failed', err);
+    logger.error('Encryption failed', err);
     return text;
   }
 }

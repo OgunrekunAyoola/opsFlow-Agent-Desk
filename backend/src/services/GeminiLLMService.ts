@@ -3,6 +3,9 @@ import mongoose from 'mongoose';
 import { ModelRouter } from './ModelRouter';
 import LlmCallLog from '../models/LlmCallLog';
 import { ActionService } from './ActionService';
+import { sanitizeForLLM } from '../shared/utils/llmSanitize';
+import logger from '../shared/utils/logger';
+import * as Sentry from '@sentry/node';
 
 dotenv.config();
 
@@ -18,7 +21,7 @@ export class GeminiLLMService {
 
   constructor() {
     if (!process.env.GEMINI_API_KEY) {
-      console.warn('GEMINI_API_KEY is missing. Service will throw error if used.');
+      logger.warn('GEMINI_API_KEY is missing. Service will throw error if used.');
     }
     this.router = new ModelRouter();
     this.actionService = new ActionService();
@@ -95,8 +98,8 @@ Output Format:
         args: result.args || {},
         confidence: typeof result.confidence === 'number' ? result.confidence : 0,
       };
-    } catch (e) {
-      console.error('Action determination failed:', e);
+    } catch (error: any) {
+      logger.error(`Action determination failed: ${error.message}`);
       return { actionName: null, args: {}, confidence: 0 };
     }
   }
@@ -159,7 +162,14 @@ Output Format:
         return parsed;
       } catch (error: any) {
         lastError = error;
-        console.error('Gemini generation error:', error);
+        logger.error(`Gemini generation error: ${error.message}`);
+        
+        // Capture specific error in Sentry
+        Sentry.captureException(error, {
+          tags: { task, tenantId: meta?.tenantId, ticketId: meta?.ticketId },
+          extra: { attempt, maxAttempts }
+        });
+
         const msg = String(error?.message || error);
         const rateLimited = error?.status === 429 || /quota|rate/i.test(msg);
         if (rateLimited) {
@@ -193,8 +203,6 @@ Output Format:
     throw lastError;
   }
 
-  // Level 2: Action Agent Capability - REMOVED DUPLICATE
-
   async classifyTicket(
     subject: string,
     body: string,
@@ -207,8 +215,8 @@ Output Format:
     const prompt = `
       You are an expert support ticket classifier.
       Analyze the following ticket:
-      Subject: "${subject}"
-      Body: "${body}"
+      Subject: "${sanitizeForLLM(subject)}"
+      Body: "${sanitizeForLLM(body)}"
 
       Classify it into exactly one of these categories:
       - bug (technical issues, errors)
@@ -239,8 +247,8 @@ Output Format:
   ): Promise<{ priority: string; reason: string }> {
     const prompt = `
       Analyze this support ticket:
-      Subject: "${subject}"
-      Body: "${body}"
+      Subject: "${sanitizeForLLM(subject)}"
+      Body: "${sanitizeForLLM(body)}"
       Category: "${category}"
 
       Determine the priority level:

@@ -94,7 +94,7 @@ router.post('/inbound', async (req, res) => {
         await ticketOrchestrationQueue.add('triage', {
           tenantId: tenant._id.toString(),
           ticketId: ticket._id.toString(),
-        });
+        }, { jobId: ticket._id.toString() });
       }
     }
   } catch {}

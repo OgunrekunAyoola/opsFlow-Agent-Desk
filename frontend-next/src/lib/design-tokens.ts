@@ -1,0 +1,50 @@
+export const tokens = {
+  colors: {
+    bg: '#0A0A0A',
+    surface: '#111111',
+    surfaceHover: '#161616',
+    border: '#1C1C1C',
+    borderHover: '#2A2A2A',
+    textPrimary: '#F5F5F5',
+    textMuted: '#6B7280',
+    textSubtle: '#3A3A3A',
+    accent: '#AAFF00',
+    accentDim: 'rgba(170, 255, 0, 0.15)',
+    accentGlow: 'rgba(170, 255, 0, 0.06)',
+  },
+  fontSizes: {
+    display: '96px',
+    h1: '72px',
+    h2: '48px',
+    h3: '32px',
+    h4: '24px',
+    body: '16px',
+    small: '14px',
+    xs: '12px',
+  },
+  spacing: {
+    4: '4px',
+    8: '8px',
+    12: '12px',
+    16: '16px',
+    24: '24px',
+    32: '32px',
+    48: '48px',
+    64: '64px',
+    96: '96px',
+    128: '128px',
+    192: '192px',
+  },
+  easing: {
+    spring: 'cubic-bezier(0.16, 1, 0.3, 1)',
+    duration: '500ms',
+  },
+  radius: {
+    sharp: '4px',
+    default: '8px',
+    large: '12px',
+    pill: '9999px',
+  },
+} as const;
+
+export type DesignTokens = typeof tokens;

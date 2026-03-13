@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IWorkflowStep extends Document {
+  deletedAt?: Date | null;
   tenantId: mongoose.Types.ObjectId;
   workflowRunId: mongoose.Types.ObjectId;
   stepType: string;
@@ -9,7 +10,9 @@ export interface IWorkflowStep extends Document {
   createdAt: Date;
 }
 
-const WorkflowStepSchema: Schema = new Schema({
+const WorkflowStepSchema: Schema = new Schema(
+  {
+    deletedAt: { type: Date, default: null },
   tenantId: { type: Schema.Types.ObjectId, ref: 'Tenant', required: true, index: true },
   workflowRunId: { type: Schema.Types.ObjectId, ref: 'WorkflowRun', required: true, index: true },
   stepType: { type: String, required: true },

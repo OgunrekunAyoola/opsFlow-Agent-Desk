@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ISyncedObject extends Document {
+  deletedAt?: Date | null;
   tenantId: mongoose.Types.ObjectId;
   integrationConnectionId: mongoose.Types.ObjectId;
   provider: string;
@@ -15,6 +16,7 @@ export interface ISyncedObject extends Document {
 
 const SyncedObjectSchema: Schema = new Schema(
   {
+    deletedAt: { type: Date, default: null },
     tenantId: { type: Schema.Types.ObjectId, ref: 'Tenant', required: true },
     integrationConnectionId: {
       type: Schema.Types.ObjectId,

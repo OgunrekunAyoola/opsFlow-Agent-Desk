@@ -6,6 +6,11 @@ import { ResolvedTicketEmbeddingService } from './services/ResolvedTicketEmbeddi
 import mongoose from 'mongoose';
 import { TicketOrchestrator } from './core/orchestrator/TicketOrchestrator';
 import { executeIntegrationSync } from './services/IntegrationSyncService';
+import { slaMonitorWorker } from './workers/slaMonitor.worker';
+import { lifecycleWorker } from './workers/lifecycle.worker';
+import { slaMonitorQueue, ticketLifecycleQueue } from './queue';
+import logger from './shared/utils/logger';
+import * as Sentry from '@sentry/node';
 
 function buildConnection() {
   const url = process.env.REDIS_URL;
@@ -37,9 +42,16 @@ function buildConnection() {
   } as any;
 }
 
+let emailWorker: Worker;
+let snippetWorker: Worker;
+let integrationWorker: Worker;
+let orchestrationWorker: Worker;
+
 async function start() {
   await connectDB();
-  const emailWorker = new Worker(
+  const connection = buildConnection();
+
+  emailWorker = new Worker(
     'email-send',
     async (job) => {
       const data = job.data as {
@@ -64,11 +76,14 @@ async function start() {
       }
       await reply.save();
     },
-    { connection: buildConnection(), concurrency: Number(process.env.QUEUE_CONCURRENCY || 5) },
+    { connection, concurrency: Number(process.env.QUEUE_CONCURRENCY || 5) },
   );
-  emailWorker.on('failed', () => {});
+  emailWorker.on('failed', (job, err) => {
+    logger.error(`[EmailWorker] Job ${job?.id} failed: ${err.message}`);
+    Sentry.captureException(err, { tags: { queue: 'email-send', job: job?.id } });
+  });
 
-  const snippetWorker = new Worker(
+  snippetWorker = new Worker(
     'resolved-snippet',
     async (job) => {
       const data = job.data as {
@@ -81,39 +96,85 @@ async function start() {
       await service.upsertSnippetForTicket(tenantObjectId, ticketObjectId);
     },
     {
-      connection: buildConnection(),
+      connection,
       concurrency: Number(process.env.SNIPPET_QUEUE_CONCURRENCY || 3),
     },
   );
-  snippetWorker.on('failed', () => {});
+  snippetWorker.on('failed', (job, err) => {
+    logger.error(`[SnippetWorker] Job ${job?.id} failed: ${err.message}`);
+    Sentry.captureException(err, { tags: { queue: 'resolved-snippet', job: job?.id } });
+  });
 
-  const integrationWorker = new Worker(
+  integrationWorker = new Worker(
     'integration-sync',
     async (job) => {
       const { connectionId } = job.data;
       await executeIntegrationSync(connectionId);
     },
-    { connection: buildConnection(), concurrency: 2 },
+    { connection, concurrency: 2 },
   );
-  integrationWorker.on('failed', () => {});
+  integrationWorker.on('failed', (job, err) => {
+    logger.error(`[IntegrationWorker] Job ${job?.id} failed: ${err.message}`);
+    Sentry.captureException(err, { tags: { queue: 'integration-sync', job: job?.id } });
+  });
 
-  const orchestrationWorker = new Worker(
+  orchestrationWorker = new Worker(
     'ticket-orchestration',
     async (job) => {
-      console.log(`[OrchestrationWorker] Processing job ${job.id}`);
+      logger.info(`[OrchestrationWorker] Processing job ${job.id}`);
       const { tenantId, ticketId, startedByUserId } = job.data;
       const orchestrator = new TicketOrchestrator();
       await orchestrator.runPipeline(tenantId, ticketId, startedByUserId);
     },
     {
-      connection: buildConnection(),
+      connection,
       concurrency: Number(process.env.ORCHESTRATION_CONCURRENCY || 5),
     },
   );
   orchestrationWorker.on('failed', (job, err) => {
-    console.error(`[OrchestrationWorker] Job ${job?.id} failed: ${err.message}`);
+    logger.error(`[OrchestrationWorker] Job ${job?.id} failed: ${err.message}`);
+    Sentry.captureException(err, { tags: { queue: 'ticket-orchestration', job: job?.id } });
   });
+
+  // Schedule SLA monitoring repeatable job (every 5 minutes)
+  await slaMonitorQueue.add('check-sla', {}, {
+    repeat: {
+      pattern: '*/5 * * * *'
+    }
+  });
+  logger.info('[Worker] SLA Monitor repeatable job scheduled.');
+
+  // Schedule Lifecycle repeatable job (every 1 hour)
+  await ticketLifecycleQueue.add('check-lifecycle', {}, {
+    repeat: {
+      pattern: '0 * * * *'
+    }
+  });
+  logger.info('[Worker] Ticket Lifecycle repeatable job scheduled.');
 }
+
+async function shutdown(signal: string) {
+  logger.info(`Received ${signal}, starting graceful worker shutdown...`);
+  try {
+    await Promise.all([
+      emailWorker?.close(),
+      snippetWorker?.close(),
+      integrationWorker?.close(),
+      orchestrationWorker?.close(),
+    ]);
+    logger.info('All workers closed.');
+  } catch (err: any) {
+    logger.error(`Error during worker shutdown: ${err.message}`);
+  }
+  try {
+    await mongoose.disconnect();
+    logger.info('DB disconnected.');
+  } catch {}
+  process.exit(0);
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
 
 start().catch(async () => {
   try {

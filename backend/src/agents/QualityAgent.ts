@@ -44,7 +44,7 @@ export class QualityAgent extends BaseAgent {
           // If we wanted to stop auto-sending, we'd handle that in Orchestrator.
       }
 
-    } catch (error) {
+    } catch (error: unknown) {
       context.quality = {
         score: 0,
         issues: ['QA process failed'],

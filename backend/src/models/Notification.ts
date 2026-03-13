@@ -8,6 +8,7 @@ export type NotificationType =
   | 'team_member_joined';
 
 export interface INotification extends Document {
+  deletedAt?: Date | null;
   tenantId: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
   type: NotificationType;
@@ -20,6 +21,7 @@ export interface INotification extends Document {
 
 const NotificationSchema: Schema = new Schema(
   {
+    deletedAt: { type: Date, default: null },
     tenantId: { type: Schema.Types.ObjectId, ref: 'Tenant', required: true, index: true },
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     type: {

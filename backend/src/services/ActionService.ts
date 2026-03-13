@@ -1,15 +1,21 @@
 import { z } from 'zod';
+import crypto from 'crypto';
 import Ticket from '../models/Ticket';
 import TicketReply from '../models/TicketReply';
+import Order from '../models/Order';
+import User from '../models/User';
+import { tenantScope } from '../shared/utils/tenantGuard';
+import { EmailService } from './EmailService';
+import logger from '../shared/utils/logger';
 
 export interface ToolDefinition {
   name: string;
   description: string;
-  schema: z.ZodType<any>;
+  schema: z.ZodType<Record<string, unknown>>;
   execute: (
-    args: any,
+    args: Record<string, unknown> | unknown,
     context: { tenantId: string; userId?: string; ticketId?: string },
-  ) => Promise<any>;
+  ) => Promise<Record<string, unknown>>;
 }
 
 export const tools: Record<string, ToolDefinition> = {
@@ -19,16 +25,17 @@ export const tools: Record<string, ToolDefinition> = {
     schema: z.object({
       reason: z.string().describe('The reason for escalation'),
     }),
-    execute: async ({ reason }, { tenantId, ticketId, userId }) => {
+    execute: async (args: unknown, { tenantId, ticketId, userId }) => {
+      const { reason } = args as { reason: string };
       if (!ticketId || !tenantId) {
         throw new Error('Missing ticketId or tenantId context for escalation');
       }
 
-      console.log(`[Action] Escalating ticket ${ticketId}`);
+      logger.info(`[Action] Escalating ticket ${ticketId}`);
 
       // 1. Update Ticket Priority
       await Ticket.updateOne(
-        { _id: ticketId, tenantId },
+        { _id: ticketId, ...tenantScope(tenantId) },
         { priority: 'urgent', status: 'triaged' },
       );
 
@@ -52,10 +59,11 @@ export const tools: Record<string, ToolDefinition> = {
     schema: z.object({
       orderId: z.string().describe('The order ID (e.g., ORD-123)'),
     }),
-    execute: async ({ orderId }) => {
-      // Mock Integration
-      if (orderId === 'ORD-FAIL') return { status: 'failed', reason: 'Payment declined' };
-      return { status: 'shipped', tracking: 'UPS-999999' };
+    execute: async (args: unknown, { tenantId }) => {
+      const { orderId } = args as { orderId: string };
+      const order = await Order.findOne({ orderId, ...tenantScope(tenantId) }).exec();
+      if (!order) return { status: 'not_found', reason: 'Order not found' };
+      return { status: order.status, tracking: order.trackingNumber, total: order.total };
     },
   },
   refund_order: {
@@ -65,9 +73,20 @@ export const tools: Record<string, ToolDefinition> = {
       orderId: z.string(),
       reason: z.string(),
     }),
-    execute: async ({ orderId, reason }) => {
-      console.log(`[Action] Refunding ${orderId} because: ${reason}`);
-      return { success: true, refundId: 'REF-777' };
+    execute: async (args: unknown, { tenantId }) => {
+      const { orderId, reason } = args as { orderId: string; reason: string };
+      const order = await Order.findOne({ orderId, ...tenantScope(tenantId) }).exec();
+      if (!order) return { success: false, reason: 'Order not found' };
+      if (order.status === 'refunded') return { success: false, reason: 'Already refunded' };
+      
+      const refundId = `REF-${Math.floor(Math.random() * 1000000)}`;
+      order.status = 'refunded';
+      order.refundId = refundId;
+      order.refundReason = reason;
+      await order.save();
+      
+      logger.info(`[Action] Refunding ${orderId} because: ${reason}`);
+      return { success: true, refundId };
     },
   },
   reset_password: {
@@ -76,8 +95,24 @@ export const tools: Record<string, ToolDefinition> = {
     schema: z.object({
       email: z.string().email(),
     }),
-    execute: async ({ email }) => {
-      console.log(`[Action] Password reset for ${email}`);
+    execute: async (args: unknown, { tenantId }) => {
+      const { email } = args as { email: string };
+      const user = await User.findOne({ email, ...tenantScope(tenantId) }).exec();
+      if (!user) return { success: false, message: 'User not found' };
+      
+      const token = crypto.randomBytes(20).toString('hex');
+      user.resetPasswordToken = token;
+      user.resetPasswordExpires = new Date(Date.now() + 3600000);
+      await user.save();
+      
+      const emailService = new EmailService();
+      await emailService.send({
+        to: email,
+        subject: 'Password Reset Request',
+        text: `Your password reset token is: ${token}`,
+        html: `<p>Your password reset token is: <strong>${token}</strong></p>`
+      }).catch(() => logger.error('Failed to send reset email'));
+      
       return { success: true, message: 'Reset link sent' };
     },
   },
@@ -85,7 +120,9 @@ export const tools: Record<string, ToolDefinition> = {
 
 export class ActionService {
   getTools() {
-    return Object.values(tools).map((t) => ({
+    return Object.keys(tools).map((key) => {
+      const t = tools[key];
+      return {
       name: t.name,
       description: t.description,
       parameters: {
@@ -96,13 +133,14 @@ export class ActionService {
           email: { type: 'STRING' },
         },
         required: [], // Simplified for prototype
-      },
-    }));
+        }
+      };
+    });
   }
 
   async executeTool(
     name: string,
-    args: any,
+    args: Record<string, unknown> | unknown,
     context: { tenantId: string; userId?: string; ticketId?: string },
   ) {
     const tool = tools[name];

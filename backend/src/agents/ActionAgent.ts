@@ -2,6 +2,7 @@ import { BaseAgent } from '../core/agents/BaseAgent';
 import { PipelineContext } from '../core/pipeline/PipelineContext';
 import { ActionService, tools } from '../services/ActionService';
 import { LLMProvider } from '../core/llm/LLMProvider';
+import logger from '../shared/utils/logger';
 
 export class ActionAgent extends BaseAgent {
   private actionService: ActionService;
@@ -47,7 +48,7 @@ export class ActionAgent extends BaseAgent {
     try {
       const decision = await this.llm.generateJSON<{
         actionName: string | null;
-        args: any;
+        args: Record<string, unknown>;
         confidence: number;
         reason: string;
       }>('classification', prompt, { tenantId: context.tenantId, ticketId: context.ticketId });
@@ -74,7 +75,7 @@ export class ActionAgent extends BaseAgent {
               const result = await toolDef.execute(decision.args, {
                 tenantId: context.tenantId,
                 ticketId: context.ticketId,
-                userId: context.user?._id,
+                userId: context.user ? String((context.user as unknown as { _id: string })._id) : undefined,
               });
 
               context.actions.executed.push({
@@ -83,18 +84,19 @@ export class ActionAgent extends BaseAgent {
                 timestamp: new Date(),
               });
             }
-          } catch (execError: any) {
-            console.error('Tool execution failed:', execError);
+          } catch (execError: unknown) {
+            logger.error('Tool execution failed:', execError);
+            const msg = execError instanceof Error ? execError.message : String(execError);
             context.actions.executed.push({
               name: decision.actionName,
-              result: { error: execError.message },
+              result: { error: msg },
               timestamp: new Date(),
             });
           }
         }
       }
-    } catch (error) {
-      console.error('Action determination failed:', error);
+    } catch (error: unknown) {
+      logger.error('Action determination failed:', error);
     }
 
     return context;

@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IResolvedTicketSnippet extends Document {
+  deletedAt?: Date | null;
   tenantId: mongoose.Types.ObjectId;
   ticketId: mongoose.Types.ObjectId;
   snippetText: string;
@@ -13,6 +14,7 @@ export interface IResolvedTicketSnippet extends Document {
 
 const ResolvedTicketSnippetSchema: Schema = new Schema(
   {
+    deletedAt: { type: Date, default: null },
     tenantId: { type: Schema.Types.ObjectId, ref: 'Tenant', required: true, index: true },
     ticketId: { type: Schema.Types.ObjectId, ref: 'Ticket', required: true, index: true },
     snippetText: { type: String, required: true },

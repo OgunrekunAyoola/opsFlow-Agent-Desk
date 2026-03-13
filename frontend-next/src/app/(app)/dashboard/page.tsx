@@ -49,6 +49,14 @@ interface DashboardStats {
     autoReplies: number;
   };
   hasIntegrations?: boolean;
+  slaComplianceRate: number;
+  avgCsat: number;
+  agentPerformance: Array<{
+    agentId: string;
+    agentName: string;
+    handledCount: number;
+    slaComplianceRate: number;
+  }>;
 }
 
 interface MeResponse {
@@ -328,18 +336,66 @@ function DashboardPageInner() {
             </CardContent>
           </Card>
         </Link>
-        <Link href="/clients">
-          <Card className="cursor-pointer transition-colors hover:border-slate-700">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
-              <Users className="h-4 w-4 text-slate-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalUsers}</div>
-              <p className="text-xs text-slate-400">Active users</p>
-            </CardContent>
-          </Card>
-        </Link>
+        <Card className="cursor-pointer transition-colors hover:border-slate-700">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">SLA Compliance</CardTitle>
+            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {stats.slaComplianceRate > 0 ? `${stats.slaComplianceRate.toFixed(1)}%` : 'N/A'}
+            </div>
+            <p className="text-xs text-slate-400">Tickets meeting SLA targets</p>
+          </CardContent>
+        </Card>
+        <Card className="cursor-pointer transition-colors hover:border-slate-700">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Avg CSAT</CardTitle>
+            <Sparkles className="h-4 w-4 text-yellow-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {stats.avgCsat > 0 ? stats.avgCsat.toFixed(1) : '—'} / 5.0
+            </div>
+            <p className="text-xs text-slate-400">Customer rating</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7 mb-8">
+        {/* Agent Performance */}
+        <Card className="col-span-7 lg:col-span-3 border-slate-800 bg-slate-950/50">
+          <CardHeader>
+            <CardTitle>Agent Performance</CardTitle>
+            <CardDescription>SLA and resolution metrics per agent</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {stats.agentPerformance && stats.agentPerformance.length > 0 ? (
+                stats.agentPerformance.map((agent) => (
+                  <div key={agent.agentId} className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-900/50 p-3">
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-full bg-blue-900/50 flex items-center justify-center text-blue-400 font-bold border border-blue-500/20">
+                        {agent.agentName.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="font-medium text-slate-200 text-sm">{agent.agentName}</div>
+                        <div className="text-xs text-slate-400">{agent.handledCount} tickets handled</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-medium text-slate-200">
+                        {agent.slaComplianceRate.toFixed(1)}% SLA
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-slate-500 italic">No agent data this week.</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* AI Performance */}

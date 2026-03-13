@@ -27,6 +27,8 @@ import {
   CardDescription,
 } from '../../../components/ui/Card';
 import { Skeleton } from '../../../components/ui/Skeleton';
+import { io, Socket } from 'socket.io-client';
+import { authClient } from '../../../lib/auth-client';
 
 interface Ticket {
   _id: string;
@@ -42,6 +44,7 @@ interface Ticket {
     body?: string;
     confidence?: number;
   };
+  slaBreached?: boolean;
 }
 
 interface TicketResponse {
@@ -58,6 +61,37 @@ export default function TicketsPage() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [socket, setSocket] = useState<Socket | null>(null);
+
+  const { data: session } = authClient.useSession();
+  const currentUser = session?.user;
+
+  // Real-time updates
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:3001';
+    const newSocket = io(API_BASE, {
+      query: { userId: currentUser.id },
+    });
+
+    setSocket(newSocket);
+
+    newSocket.on('ticket:created', (newTicket: Ticket) => {
+      setTickets((prev) => [newTicket, ...prev]);
+    });
+
+    newSocket.on('ticket:updated', (updatedTicket: Ticket) => {
+      setTickets((prev) =>
+        prev.map((t) => (t._id === updatedTicket._id ? updatedTicket : t))
+      );
+    });
+
+    return () => {
+      newSocket.disconnect();
+    };
+  }, [currentUser]);
 
   // Debounce search
   useEffect(() => {
@@ -73,6 +107,7 @@ export default function TicketsPage() {
       try {
         const params = new URLSearchParams();
         if (debouncedSearch) params.set('search', debouncedSearch);
+        if (statusFilter) params.set('status', statusFilter);
 
         const res = await fetchWithAccess<TicketResponse>(`/tickets?${params.toString()}`);
         if (res.ok && res.data) {
@@ -89,7 +124,7 @@ export default function TicketsPage() {
       }
     }
     load();
-  }, [debouncedSearch, router]);
+  }, [debouncedSearch, statusFilter, router]);
 
   const statusColors: Record<string, string> = {
     new: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
@@ -134,13 +169,19 @@ export default function TicketsPage() {
               />
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-slate-800 text-slate-400 hover:text-slate-200"
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="flex h-9 w-32 rounded-md border border-slate-800 bg-slate-950 px-3 py-1 text-sm text-slate-200 outline-none focus:border-blue-500/50"
               >
-                <Filter className="mr-2 h-4 w-4" /> Filter
-              </Button>
+                <option value="">All Statuses</option>
+                <option value="new">New</option>
+                <option value="triaged">Triaged</option>
+                <option value="waiting_on_customer">Waiting</option>
+                <option value="open">Open</option>
+                <option value="resolved">Resolved</option>
+                <option value="closed">Closed</option>
+              </select>
               <Button
                 variant="outline"
                 size="sm"
@@ -225,6 +266,11 @@ export default function TicketsPage() {
                                 AI Draft
                               </Badge>
                             )}
+                          {ticket.slaBreached && (
+                            <Badge className="bg-red-500/10 text-red-500 border-red-500/20 text-[10px] px-1.5 py-0 h-5">
+                              SLA Breached
+                            </Badge>
+                          )}
                         </div>
                         <div className="flex items-center gap-3 text-xs text-slate-500">
                           <span className="flex items-center gap-1">

@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ITicketReply extends Document {
+  deletedAt?: Date | null;
   tenantId: mongoose.Types.ObjectId;
   ticketId: mongoose.Types.ObjectId;
   authorType: 'ai' | 'human';
@@ -12,19 +13,20 @@ export interface ITicketReply extends Document {
   providerMessageId?: string;
   deliveryError?: string;
   isInternalNote?: boolean;
-  type?: 'reply' | 'note';
+  type?: 'public_reply' | 'internal_note';
   createdAt: Date;
 }
 
 const TicketReplySchema: Schema = new Schema(
   {
+    deletedAt: { type: Date, default: null },
     tenantId: { type: Schema.Types.ObjectId, ref: 'Tenant', required: true, index: true },
     ticketId: { type: Schema.Types.ObjectId, ref: 'Ticket', required: true, index: true },
     authorType: { type: String, enum: ['ai', 'human'], required: true },
     authorId: { type: Schema.Types.ObjectId, ref: 'User' },
     body: { type: String, required: true },
     isInternalNote: { type: Boolean, default: false },
-    type: { type: String, enum: ['reply', 'note'], default: 'reply' },
+    type: { type: String, enum: ['public_reply', 'internal_note'], default: 'public_reply' },
     deliveryStatus: {
       type: String,
       enum: ['queued', 'sent', 'delivered', 'bounced', 'complained', 'failed'],

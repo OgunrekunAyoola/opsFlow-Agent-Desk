@@ -1,29 +1,30 @@
 import IntegrationConnection from '../models/IntegrationConnection';
 import { integrationRegistry } from '../integrations';
 import { integrationSyncQueue, shouldUseMock } from '../queue';
+import logger from '../shared/utils/logger';
 
 export async function executeIntegrationSync(connectionId: string) {
-  const connection = await IntegrationConnection.findById(connectionId).exec();
+  const connection = await IntegrationConnection.findOne({ _id: connectionId, deletedAt: null }).exec();
   if (!connection) {
-    console.error(`Connection ${connectionId} not found`);
+    logger.error(`Connection ${connectionId} not found`);
     return;
   }
 
   const provider = integrationRegistry.get(connection.provider);
   if (!provider) {
-    console.error(`Provider ${connection.provider} not found`);
+    logger.error(`Provider ${connection.provider} not found`);
     return;
   }
 
   try {
-    console.log(`Starting sync for ${connection.provider} connection ${connectionId}`);
+    logger.info(`Starting sync for ${connection.provider} connection ${connectionId}`);
     await provider.sync(connection);
     connection.lastSyncAt = new Date();
     connection.status = 'active';
     await connection.save();
-    console.log(`Sync completed for ${connectionId}`);
+    logger.info(`Sync completed for ${connectionId}`);
   } catch (err) {
-    console.error(`Sync failed for connection ${connectionId}:`, err);
+    logger.error(`Sync failed for connection ${connectionId}:`, err);
     connection.status = 'error';
     await connection.save();
     throw err;
@@ -34,7 +35,7 @@ export async function scheduleIntegrationSync(connectionId: string) {
   if (shouldUseMock) {
     // If mocking (no Redis), run inline immediately (or next tick)
     executeIntegrationSync(connectionId).catch((err) => {
-      console.error('Mock sync failed:', err);
+      logger.error('Mock sync failed:', err);
     });
   } else {
     // If Redis available, push to queue

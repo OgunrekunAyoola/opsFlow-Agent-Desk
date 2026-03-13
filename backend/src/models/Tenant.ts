@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ITenant extends Document {
+  deletedAt?: Date | null;
   name: string;
   slug?: string;
   inboundAddress?: string;
@@ -19,12 +20,19 @@ export interface ITenant extends Document {
   zendeskTokenExpiresAt?: Date;
   aiDraftEnabled?: boolean;
   aiUsePastTickets?: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  onboarded?: boolean;
+  industry?: string;
+  teamSize?: string;
+  brandTone?: 'professional' | 'friendly' | 'concise';
+  escalationThreshold?: number;
+  tier: 'starter' | 'growth' | 'enterprise';
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 const TenantSchema: Schema = new Schema(
   {
+    deletedAt: { type: Date, default: null },
     name: { type: String, required: true },
     slug: { type: String, unique: true, sparse: true },
     inboundAddress: { type: String, unique: true, sparse: true },
@@ -46,6 +54,12 @@ const TenantSchema: Schema = new Schema(
     aiDraftEnabled: { type: Boolean, default: true },
     aiUsePastTickets: { type: Boolean, default: true },
     ingestApiKey: { type: String, unique: true, sparse: true },
+    onboarded: { type: Boolean, default: false },
+    industry: { type: String },
+    teamSize: { type: String },
+    brandTone: { type: String, enum: ['professional', 'friendly', 'concise'], default: 'professional' },
+    escalationThreshold: { type: Number, default: 70 },
+    tier: { type: String, enum: ['starter', 'growth', 'enterprise'], default: 'starter', index: true },
   },
   { timestamps: true },
 );

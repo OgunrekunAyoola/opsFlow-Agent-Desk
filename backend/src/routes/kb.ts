@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requireAuth, requireAdmin } from '../middleware/auth';
 import KBArticle from '../models/KBArticle';
 import KBArticleProposal from '../models/KBArticleProposal';
+import { tenantScope } from '../shared/utils/tenantGuard';
 
 const router = Router();
 
@@ -9,7 +10,7 @@ const router = Router();
 
 router.get('/proposals', requireAuth, requireAdmin, async (req, res) => {
   const { tenantId } = (req as any).currentUser;
-  const items = await KBArticleProposal.find({ tenantId, status: 'pending' })
+  const items = await KBArticleProposal.find({ ...tenantScope(tenantId), status: 'pending' })
     .sort({ confidenceScore: -1 })
     .exec();
   res.json({ items });
@@ -20,7 +21,7 @@ router.post('/proposals/:id/approve', requireAuth, requireAdmin, async (req, res
   const { id } = req.params;
   const { title, body, tags } = req.body; // Allow override
 
-  const proposal = await KBArticleProposal.findOne({ _id: id, tenantId });
+  const proposal = await KBArticleProposal.findOne({ _id: id, ...tenantScope(tenantId) });
   if (!proposal) return res.status(404).json({ error: 'Proposal not found' });
 
   if (proposal.status !== 'pending') {
@@ -49,7 +50,7 @@ router.post('/proposals/:id/reject', requireAuth, requireAdmin, async (req, res)
   const { id } = req.params;
 
   const proposal = await KBArticleProposal.findOneAndUpdate(
-    { _id: id, tenantId },
+    { _id: id, ...tenantScope(tenantId) },
     { status: 'rejected' },
     { new: true },
   );
@@ -64,7 +65,7 @@ router.get('/', requireAuth, async (req, res) => {
   const { tenantId } = (req as any).currentUser;
   const { q } = (req.query as any) || {};
 
-  const query: any = { tenantId };
+  const query: any = { ...tenantScope(tenantId) };
   if (q && typeof q === 'string' && q.trim().length > 0) {
     const s = q.trim();
     query.$or = [
@@ -82,7 +83,7 @@ router.get('/:id', requireAuth, async (req, res) => {
   const { tenantId } = (req as any).currentUser;
   const { id } = req.params;
 
-  const article = await KBArticle.findOne({ _id: id, tenantId }).exec();
+  const article = await KBArticle.findOne({ _id: id, ...tenantScope(tenantId) }).exec();
   if (!article) {
     return res.status(404).json({ error: 'not_found' });
   }
@@ -113,7 +114,7 @@ router.patch('/:id', requireAuth, requireAdmin, async (req, res) => {
   const { id } = req.params;
   const { title, body, tags } = req.body || {};
 
-  const article = await KBArticle.findOne({ _id: id, tenantId }).exec();
+  const article = await KBArticle.findOne({ _id: id, ...tenantScope(tenantId) }).exec();
   if (!article) {
     return res.status(404).json({ error: 'not_found' });
   }
@@ -137,7 +138,11 @@ router.delete('/:id', requireAuth, requireAdmin, async (req, res) => {
   const { tenantId } = (req as any).currentUser;
   const { id } = req.params;
 
-  const article = await KBArticle.findOneAndDelete({ _id: id, tenantId }).exec();
+  const article = await KBArticle.findOneAndUpdate(
+    { _id: id, ...tenantScope(tenantId) },
+    { deletedAt: new Date() },
+    { new: true }
+  ).exec();
   if (!article) {
     return res.status(404).json({ error: 'not_found' });
   }

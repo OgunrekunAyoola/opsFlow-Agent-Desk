@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IUser extends Document {
+  deletedAt?: Date | null;
   tenantId: mongoose.Types.ObjectId;
   name: string;
   email: string;
@@ -17,6 +18,7 @@ export interface IUser extends Document {
 
 const UserSchema: Schema = new Schema(
   {
+    deletedAt: { type: Date, default: null },
     tenantId: { type: Schema.Types.ObjectId, ref: 'Tenant', required: true },
     name: { type: String, required: true },
     email: { type: String, required: true },

@@ -1,13 +1,15 @@
 import { Router } from 'express';
 import { requireAuth, requireAdmin } from '../middleware/auth';
 import Client from '../models/Client';
+import { tenantScope } from '../shared/utils/tenantGuard';
+import logger from '../shared/utils/logger';
 
 const router = Router();
 
 // List clients
 router.get('/', requireAuth, requireAdmin, async (req, res) => {
   const { tenantId } = (req as any).currentUser;
-  const clients = await Client.find({ tenantId }).sort({ name: 1 }).exec();
+  const clients = await Client.find({ ...tenantScope(tenantId) }).sort({ name: 1 }).exec();
   res.json({ clients });
 });
 
@@ -23,7 +25,7 @@ router.post('/', requireAuth, requireAdmin, async (req, res) => {
     if (err.code === 11000) {
       return res.status(409).json({ error: 'Client already exists' });
     }
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ error: 'Failed to create client' });
   }
 });

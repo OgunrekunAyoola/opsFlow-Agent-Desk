@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { fromNodeHeaders } from 'better-auth/node';
+import * as Sentry from '@sentry/node';
 import { auth } from '../auth';
 import User from '../models/User';
 import Tenant from '../models/Tenant';
@@ -45,6 +46,13 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       tenantId,
       session,
     };
+
+    Sentry.setUser({ 
+      id: session.user.id, 
+      email: session.user.email,
+      tenantId: tenantId
+    });
+
     next();
   } catch {
     res.status(401).json({ error: 'unauthorized' });

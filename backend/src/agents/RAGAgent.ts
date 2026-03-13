@@ -3,6 +3,7 @@ import { PipelineContext } from '../core/pipeline/PipelineContext';
 import { LLMProvider } from '../core/llm/LLMProvider';
 import { RAGService } from '../services/RAGService';
 import mongoose from 'mongoose';
+import logger from '../shared/utils/logger';
 
 export class RAGAgent extends BaseAgent {
   private ragService: RAGService;
@@ -25,7 +26,7 @@ export class RAGAgent extends BaseAgent {
       const results = await this.ragService.search(tenantId, query, 3);
 
       context.rag = {
-        relevantSnippets: results.map((r: any) => ({
+        relevantSnippets: results.map((r: { content: string; sourceType: string; score: number; metadata?: Record<string, unknown> }) => ({
           content: r.content,
           source: r.sourceType,
           score: r.score,
@@ -33,8 +34,8 @@ export class RAGAgent extends BaseAgent {
         })),
         kbArticles: [],
       };
-    } catch (error) {
-      console.error('RAG Agent failed:', error);
+    } catch (error: unknown) {
+      logger.error('RAG Agent failed:', error);
       context.rag = { relevantSnippets: [], kbArticles: [] };
     }
 

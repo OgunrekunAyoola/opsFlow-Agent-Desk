@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IVectorDoc extends Document {
+  deletedAt?: Date | null;
   tenantId: mongoose.Types.ObjectId;
   sourceType: 'ticket' | 'doc' | 'web' | 'integration';
   sourceId: string;
@@ -13,6 +14,7 @@ export interface IVectorDoc extends Document {
 
 const VectorDocSchema: Schema = new Schema(
   {
+    deletedAt: { type: Date, default: null },
     tenantId: { type: Schema.Types.ObjectId, ref: 'Tenant', required: true, index: true },
     sourceType: { type: String, required: true, enum: ['ticket', 'doc', 'web', 'integration'] },
     sourceId: { type: String, required: true },

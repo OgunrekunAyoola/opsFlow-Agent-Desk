@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import VectorDoc from '../models/VectorDoc';
+import logger from '../shared/utils/logger';
 
 dotenv.config();
 
@@ -33,7 +34,7 @@ export class RAGService {
       if (!Array.isArray(values)) return null;
       return values as number[];
     } catch (err) {
-      console.error('RAGService embedding error:', err);
+      logger.error('RAGService embedding error:', err);
       return null;
     }
   }

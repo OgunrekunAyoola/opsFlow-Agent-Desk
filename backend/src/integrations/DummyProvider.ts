@@ -4,9 +4,10 @@ import Ticket from '../models/Ticket';
 import SyncedObject from '../models/SyncedObject';
 import mongoose from 'mongoose';
 import { RAGService } from '../services/RAGService';
+import logger from '../shared/utils/logger';
 
 function log(msg: string) {
-  console.log(msg);
+  logger.info(msg);
 }
 
 export class DummyProvider extends IntegrationProvider {
@@ -129,7 +130,7 @@ export class DummyProvider extends IntegrationProvider {
         );
         log(`Upserted RAG doc for ticket ${extTicket.id}`);
       } catch (err) {
-        console.error(`Error syncing ticket ${extTicket.id}:`, err);
+        logger.error(`Error syncing ticket ${extTicket.id}:`, err);
       }
     }
 
@@ -185,7 +186,7 @@ export class DummyProvider extends IntegrationProvider {
         );
         log(`Upserted RAG doc for doc ${extDoc.id}`);
       } catch (err) {
-        console.error(`Error syncing doc ${extDoc.id}:`, err);
+        logger.error(`Error syncing doc ${extDoc.id}:`, err);
       }
     }
 

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth';
 import Notification from '../models/Notification';
+import { tenantScope } from '../shared/utils/tenantGuard';
 
 const router = Router();
 
@@ -9,15 +10,16 @@ router.get('/', requireAuth, async (req, res) => {
   const { limit } = (req.query as any) || {};
   const max = Math.max(Math.min(parseInt(limit || '10', 10), 50), 1);
 
-  const items = await Notification.find({ tenantId: ctx.tenantId, userId: ctx.userId })
+  const scope = { ...tenantScope(ctx.tenantId), userId: ctx.userId };
+
+  const items = await Notification.find(scope)
     .sort({ createdAt: -1 })
     .limit(max)
     .lean()
     .exec();
 
   const unreadCount = await Notification.countDocuments({
-    tenantId: ctx.tenantId,
-    userId: ctx.userId,
+    ...scope,
     readAt: { $exists: false },
   }).exec();
 
@@ -27,7 +29,7 @@ router.get('/', requireAuth, async (req, res) => {
 router.post('/mark-all-read', requireAuth, async (req, res) => {
   const ctx = (req as any).currentUser;
   await Notification.updateMany(
-    { tenantId: ctx.tenantId, userId: ctx.userId, readAt: { $exists: false } },
+    { ...tenantScope(ctx.tenantId), userId: ctx.userId, readAt: { $exists: false } },
     { $set: { readAt: new Date() } },
   ).exec();
   res.json({ ok: true });
@@ -37,7 +39,7 @@ router.post('/:id/read', requireAuth, async (req, res) => {
   const ctx = (req as any).currentUser;
   const { id } = req.params;
   const notif = await Notification.findOneAndUpdate(
-    { _id: id, tenantId: ctx.tenantId, userId: ctx.userId },
+    { _id: id, ...tenantScope(ctx.tenantId), userId: ctx.userId },
     { $set: { readAt: new Date() } },
     { new: true },
   ).exec();

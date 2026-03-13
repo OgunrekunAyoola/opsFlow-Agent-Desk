@@ -2,6 +2,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 import { encrypt, decrypt } from '../utils/encryption';
 
 export interface IIntegrationConnection extends Document {
+  deletedAt?: Date | null;
   tenantId: mongoose.Types.ObjectId;
   provider: string; // 'slack', 'gmail', 'zendesk', 'dummy'
   integrationId: string; // unique identifier from provider if applicable
@@ -18,6 +19,7 @@ export interface IIntegrationConnection extends Document {
 
 const IntegrationConnectionSchema: Schema = new Schema(
   {
+    deletedAt: { type: Date, default: null },
     tenantId: { type: Schema.Types.ObjectId, ref: 'Tenant', required: true },
     provider: { type: String, required: true },
     integrationId: { type: String },

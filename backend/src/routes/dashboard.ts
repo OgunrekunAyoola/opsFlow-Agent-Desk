@@ -6,6 +6,9 @@ import TicketReply from '../models/TicketReply';
 import User from '../models/User';
 import UserAction from '../models/UserAction';
 import IntegrationConnection from '../models/IntegrationConnection';
+import CSAT from '../models/CSAT';
+import { tenantScope } from '../shared/utils/tenantGuard';
+import logger from '../shared/utils/logger';
 
 const router = Router();
 
@@ -17,48 +20,48 @@ router.get('/stats', requireAuth, async (req, res) => {
 
     // Check if tenant has any active integrations
     const hasIntegrations = await IntegrationConnection.exists({
-      tenantId: tenantObjectId,
+      ...tenantScope(tenantId),
       status: 'active',
     });
 
     // 1. Ticket Counts by Status
     const statusCounts = await Ticket.aggregate([
-      { $match: { tenantId: tenantObjectId } },
+      { $match: { ...tenantScope(tenantId) } },
       { $group: { _id: '$status', count: { $sum: 1 } } },
     ]);
 
     // 2. Ticket Counts by Priority
     const priorityCounts = await Ticket.aggregate([
-      { $match: { tenantId: tenantObjectId } },
+      { $match: { ...tenantScope(tenantId) } },
       { $group: { _id: '$priority', count: { $sum: 1 } } },
     ]);
 
     // 3. Recent Tickets
-    const recentTickets = await Ticket.find({ tenantId })
+    const recentTickets = await Ticket.find({ ...tenantScope(tenantId) })
       .sort({ createdAt: -1 })
       .limit(5)
       .select('subject status priority createdAt customerName')
       .exec();
 
     // 4. Total Users (for team stats)
-    const totalUsers = await User.countDocuments({ tenantId });
+    const totalUsers = await User.countDocuments({ ...tenantScope(tenantId) });
 
     const aiTriageRuns = await UserAction.countDocuments({
-      tenantId,
+      ...tenantScope(tenantId),
       type: 'ai_triage_run',
     }).exec();
 
     const aiSuggestionUses = await UserAction.countDocuments({
-      tenantId,
+      ...tenantScope(tenantId),
       type: 'ai_suggestion_used',
     }).exec();
 
     const autoReplies = await UserAction.countDocuments({
-      tenantId,
+      ...tenantScope(tenantId),
       type: 'auto_reply_sent',
     }).exec();
 
-    const stats = {
+    const stats: any = {
       totalTickets: statusCounts.reduce((acc, curr) => acc + curr.count, 0),
       byStatus: statusCounts.reduce((acc, curr) => ({ ...acc, [curr._id]: curr.count }), {}),
       byPriority: priorityCounts.reduce((acc, curr) => ({ ...acc, [curr._id]: curr.count }), {}),
@@ -70,11 +73,61 @@ router.get('/stats', requireAuth, async (req, res) => {
         autoReplies,
       },
       hasIntegrations: !!hasIntegrations,
+      slaComplianceRate: 0,
+      avgCsat: 0,
+      agentPerformance: [] as any[],
     };
+
+    // Calculate CSAT
+    const csatAgg = await CSAT.aggregate([
+      { $match: { ...tenantScope(tenantId) } },
+      { $group: { _id: null, avgRating: { $avg: '$rating' } } }
+    ]);
+    if (csatAgg.length > 0) stats.avgCsat = csatAgg[0].avgRating;
+
+    // Calculate SLA Compliance (for tickets with SLA)
+    const slaAgg = await Ticket.aggregate([
+      { $match: { ...tenantScope(tenantId), slaPolicy: { $exists: true } } },
+      { $group: { 
+          _id: null, 
+          total: { $sum: 1 },
+          breached: { $sum: { $cond: ['$slaBreached', 1, 0] } }
+        }
+      }
+    ]);
+    if (slaAgg.length > 0 && slaAgg[0].total > 0) {
+      stats.slaComplianceRate = ((slaAgg[0].total - slaAgg[0].breached) / slaAgg[0].total) * 100;
+    }
+
+    // Agent Performance
+    const agentAgg = await Ticket.aggregate([
+      { $match: { ...tenantScope(tenantId), assigneeId: { $ne: null } } },
+      { $group: {
+          _id: '$assigneeId',
+          handledCount: { $sum: 1 },
+          breachedCount: { $sum: { $cond: ['$slaBreached', 1, 0] } }
+        }
+      },
+      { $lookup: {
+          from: 'users',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'agent'
+        }
+      },
+      { $unwind: '$agent' }
+    ]);
+
+    stats.agentPerformance = agentAgg.map(a => ({
+      agentId: a._id,
+      agentName: a.agent.name,
+      handledCount: a.handledCount,
+      slaComplianceRate: a.handledCount > 0 ? ((a.handledCount - a.breachedCount) / a.handledCount) * 100 : 100
+    }));
 
     res.json(stats);
   } catch (error) {
-    console.error('Dashboard stats error:', error);
+    logger.error('Dashboard stats error:', error);
     res.status(500).json({ error: 'Failed to fetch dashboard stats' });
   }
 });
@@ -91,7 +144,7 @@ router.get('/metrics', requireAuth, async (req, res) => {
     if (range === '90d') days = 90;
     const from = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
 
-    const matchBase = { tenantId: tenantObjectId, createdAt: { $gte: from, $lte: now } } as any;
+    const matchBase = { ...tenantScope(tenantId), createdAt: { $gte: from, $lte: now } } as any;
 
     const totalTicketsAgg = await Ticket.aggregate([{ $match: matchBase }, { $count: 'count' }]);
     const totalTickets = totalTicketsAgg[0]?.count || 0;
@@ -123,7 +176,7 @@ router.get('/metrics', requireAuth, async (req, res) => {
     });
 
     const ticketsForResponse = await Ticket.find({
-      tenantId,
+      ...tenantScope(tenantId),
       createdAt: { $gte: from, $lte: now },
     })
       .select('_id createdAt')
@@ -170,7 +223,7 @@ router.get('/metrics', requireAuth, async (req, res) => {
     }));
 
     const replyAgg = await TicketReply.aggregate([
-      { $match: { tenantId: tenantObjectId } },
+      { $match: { ...tenantScope(tenantId) } },
       {
         $group: {
           _id: '$authorType',
@@ -245,7 +298,7 @@ router.get('/metrics', requireAuth, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Dashboard metrics error:', error);
+    logger.error('Dashboard metrics error:', error);
     res.status(500).json({ error: 'Failed to fetch dashboard metrics' });
   }
 });

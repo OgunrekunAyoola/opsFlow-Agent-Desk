@@ -51,7 +51,7 @@ export class ResponseAgent extends BaseAgent {
         tone: result.tone || 'professional',
         channel: result.channel || 'email'
       };
-    } catch (error) {
+    } catch (error: unknown) {
         context.response = {
             draft: "Thank you for contacting support. We have received your request and an agent will review it shortly.",
             tone: "neutral",

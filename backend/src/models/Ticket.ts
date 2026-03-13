@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ITicket extends Document {
+  deletedAt?: Date | null;
   tenantId: mongoose.Types.ObjectId;
   clientId?: mongoose.Types.ObjectId;
   subject: string;
@@ -12,6 +13,7 @@ export interface ITicket extends Document {
     | 'triaged'
     | 'awaiting_reply'
     | 'replied'
+    | 'waiting_on_customer'
     | 'closed'
     | 'auto_resolved'
     | 'triaging';
@@ -38,12 +40,21 @@ export interface ITicket extends Document {
     explanation?: string;
   };
   isAiTriaged: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  // SLA Fields
+  slaPolicy?: mongoose.Types.ObjectId;
+  slaStartedAt?: Date;
+  slaPausedAt?: Date;
+  slaFirstResponseAt?: Date;
+  slaResolvedAt?: Date;
+  slaBreached: boolean;
+  followUpSent?: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 const TicketSchema: Schema = new Schema(
   {
+    deletedAt: { type: Date, default: null },
     tenantId: { type: Schema.Types.ObjectId, ref: 'Tenant', required: true, index: true },
     clientId: { type: Schema.Types.ObjectId, ref: 'Client', index: true },
     subject: { type: String, required: true },
@@ -52,7 +63,16 @@ const TicketSchema: Schema = new Schema(
     channel: { type: String, enum: ['email', 'web_form', 'integration'], required: true },
     status: {
       type: String,
-      enum: ['new', 'triaged', 'awaiting_reply', 'replied', 'closed', 'auto_resolved', 'triaging'],
+      enum: [
+        'new',
+        'triaged',
+        'awaiting_reply',
+        'replied',
+        'waiting_on_customer',
+        'closed',
+        'auto_resolved',
+        'triaging',
+      ],
       default: 'new',
       index: true,
     },
@@ -88,6 +108,14 @@ const TicketSchema: Schema = new Schema(
       explanation: { type: String },
     },
     isAiTriaged: { type: Boolean, default: false },
+    // SLA Fields
+    slaPolicy: { type: Schema.Types.ObjectId, ref: 'SLAPolicy' },
+    slaStartedAt: { type: Date },
+    slaPausedAt: { type: Date },
+    slaFirstResponseAt: { type: Date },
+    slaResolvedAt: { type: Date },
+    slaBreached: { type: Boolean, default: false },
+    followUpSent: { type: Boolean, default: false },
   },
   { timestamps: true },
 );

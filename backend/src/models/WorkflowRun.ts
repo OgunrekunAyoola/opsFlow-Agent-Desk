@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IWorkflowRun extends Document {
+  deletedAt?: Date | null;
   tenantId: mongoose.Types.ObjectId;
   type: 'ticket_triage';
   ticketId: mongoose.Types.ObjectId;
@@ -11,7 +12,9 @@ export interface IWorkflowRun extends Document {
   errorMessage?: string;
 }
 
-const WorkflowRunSchema: Schema = new Schema({
+const WorkflowRunSchema: Schema = new Schema(
+  {
+    deletedAt: { type: Date, default: null },
   tenantId: { type: Schema.Types.ObjectId, ref: 'Tenant', required: true, index: true },
   type: { type: String, enum: ['ticket_triage', 'agent_orchestration'], required: true },
   ticketId: { type: Schema.Types.ObjectId, ref: 'Ticket', required: true, index: true },

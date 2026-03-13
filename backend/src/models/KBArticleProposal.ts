@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IKBArticleProposal extends Document {
+  deletedAt?: Date | null;
   tenantId: mongoose.Types.ObjectId;
   title: string;
   content: string;
@@ -14,6 +15,7 @@ export interface IKBArticleProposal extends Document {
 
 const KBArticleProposalSchema: Schema = new Schema(
   {
+    deletedAt: { type: Date, default: null },
     tenantId: { type: Schema.Types.ObjectId, ref: 'Tenant', required: true, index: true },
     title: { type: String, required: true },
     content: { type: String, required: true },

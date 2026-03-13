@@ -6,13 +6,15 @@ import { IntegrationProvider } from '../integrations/base';
 import SyncedObject from '../models/SyncedObject';
 import Ticket from '../models/Ticket';
 import { scheduleIntegrationSync } from '../services/IntegrationSyncService';
+import { tenantScope } from '../shared/utils/tenantGuard';
+import logger from '../shared/utils/logger';
 
 const router = Router();
 
 // List all available providers and current connections
 router.get('/', requireAuth, async (req, res) => {
   const ctx = (req as any).currentUser;
-  const connections = await IntegrationConnection.find({ tenantId: ctx.tenantId });
+  const connections = await IntegrationConnection.find({ ...tenantScope(ctx.tenantId) });
 
   const providers = integrationRegistry.getAll().map((p) => {
     const conn = connections.find((c) => c.provider === p.name);
@@ -65,7 +67,7 @@ router.post('/:provider/connect', requireAuth, requireAdmin, async (req, res) =>
 
       // Create connection immediately
       const connection = await IntegrationConnection.findOneAndUpdate(
-        { tenantId: (req as any).currentUser.tenantId, provider: p.name },
+        { ...tenantScope((req as any).currentUser.tenantId), provider: p.name },
         {
           accessToken: apiKey, // Store API key as accessToken (encrypted automatically by model)
           profile: validation.profile,
@@ -80,7 +82,7 @@ router.post('/:provider/connect', requireAuth, requireAdmin, async (req, res) =>
 
       return res.json({ success: true, connection });
     } catch (err) {
-      console.error('API Key validation error', err);
+      logger.error('API Key validation error', err);
       return res.status(500).json({ error: 'validation_failed' });
     }
   }
@@ -102,7 +104,7 @@ router.post('/:provider/callback', requireAuth, requireAdmin, async (req, res) =
 
     // Create or update connection
     const connection = await IntegrationConnection.findOneAndUpdate(
-      { tenantId: ctx.tenantId, provider: p.name },
+      { ...tenantScope(ctx.tenantId), provider: p.name },
       {
         accessToken: tokenData.accessToken,
         refreshToken: tokenData.refreshToken,
@@ -119,7 +121,7 @@ router.post('/:provider/callback', requireAuth, requireAdmin, async (req, res) =
 
     res.json({ success: true, connection });
   } catch (err) {
-    console.error('OAuth callback error', err);
+    logger.error('OAuth callback error', err);
     res.status(500).json({ error: 'oauth_failed' });
   }
 });
@@ -131,7 +133,7 @@ router.post('/:connectionId/sync', requireAuth, requireAdmin, async (req, res) =
 
   const connection = await IntegrationConnection.findOne({
     _id: connectionId,
-    tenantId: ctx.tenantId,
+    ...tenantScope(ctx.tenantId),
   });
   if (!connection) return res.status(404).json({ error: 'connection_not_found' });
 
@@ -146,8 +148,14 @@ router.delete('/:connectionId', requireAuth, requireAdmin, async (req, res) => {
   const { connectionId } = req.params;
   const ctx = (req as any).currentUser;
 
-  await IntegrationConnection.deleteOne({ _id: connectionId, tenantId: ctx.tenantId });
-  await SyncedObject.deleteMany({ integrationConnectionId: connectionId, tenantId: ctx.tenantId });
+  await IntegrationConnection.findOneAndUpdate(
+    { _id: connectionId, ...tenantScope(ctx.tenantId) },
+    { deletedAt: new Date(), status: 'inactive' }
+  );
+  await SyncedObject.updateMany(
+    { integrationConnectionId: connectionId, ...tenantScope(ctx.tenantId) },
+    { deletedAt: new Date() }
+  );
 
   res.json({ success: true });
 });

@@ -15,8 +15,11 @@ import {
   AlertTriangle,
   FileText,
   ShieldAlert,
+  Lock,
+  Eye,
 } from 'lucide-react';
-import { fetchWithAccess } from '../../../../lib/auth-client';
+import { io, Socket } from 'socket.io-client';
+import { fetchWithAccess, authClient } from '../../../../lib/auth-client';
 import { Button } from '../../../../components/ui/Button';
 import { Badge } from '../../../../components/ui/Badge';
 import {
@@ -37,7 +40,7 @@ interface TicketReply {
   authorName?: string;
   authorType?: 'human' | 'ai';
   isInternalNote?: boolean;
-  type?: 'reply' | 'note';
+  type?: 'public_reply' | 'internal_note';
 }
 
 interface TicketDetail {
@@ -68,6 +71,12 @@ interface TicketDetail {
   };
   assigneeId?: { _id: string; name: string; email: string } | null;
   replies: TicketReply[];
+  slaPolicy?: { _id: string; name: string; tier: string };
+  slaStartedAt?: string;
+  slaPausedAt?: string;
+  slaFirstResponseAt?: string;
+  slaResolvedAt?: string;
+  slaBreached?: boolean;
   createdAt: string;
 }
 
@@ -88,8 +97,16 @@ export default function TicketDetailPage() {
   const [runningTriage, setRunningTriage] = useState(false);
   const [usingSuggestion, setUsingSuggestion] = useState(false);
   const [replyBody, setReplyBody] = useState('');
+  const [isInternal, setIsInternal] = useState(false);
   const [sendingReply, setSendingReply] = useState(false);
   const [updatingAssignee, setUpdatingAssignee] = useState(false);
+  const [viewingUsers, setViewingUsers] = useState<{ userId: string; userName?: string }[]>([]);
+  const [typingUsers, setTypingUsers] = useState<{ userId: string; userName: string }[]>([]);
+  const [socket, setSocket] = useState<Socket | null>(null);
+
+  const { data: session } = authClient.useSession();
+  const currentUser = session?.user;
+
 
   useEffect(() => {
     if (!id) return;
@@ -121,6 +138,16 @@ export default function TicketDetailPage() {
       if (usersRes.ok && usersRes.data) {
         setUsers(usersRes.data.users);
       }
+      
+      // Emit viewing event
+      if (socket && !cancelled && currentUser) {
+        socket.emit('ticket:viewing', { 
+          ticketId: id, 
+          userId: currentUser.id, 
+          userName: currentUser.name 
+        });
+      }
+
       setIsLoading(false);
     }
     load();
@@ -128,6 +155,50 @@ export default function TicketDetailPage() {
       cancelled = true;
     };
   }, [id, router]);
+
+  useEffect(() => {
+    if (!id || !currentUser) return;
+
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:3001';
+    const newSocket = io(API_BASE, {
+      query: { ticketId: id, userId: currentUser.id },
+    });
+
+    setSocket(newSocket);
+
+    newSocket.on('ticket:viewing', (data) => {
+      setViewingUsers((prev) => {
+        if (prev.find((u) => u.userId === data.userId)) return prev;
+        return [...prev, data];
+      });
+    });
+
+    newSocket.on('ticket:typing', (data) => {
+      setTypingUsers((prev) => {
+        if (prev.find((u) => u.userId === data.userId)) return prev;
+        return [...prev, data];
+      });
+    });
+
+    newSocket.on('ticket:stop_typing', (data) => {
+      setTypingUsers((prev) => prev.filter((u) => u.userId !== data.userId));
+    });
+
+    return () => {
+      newSocket.disconnect();
+    };
+  }, [id, currentUser]);
+
+  const handleTyping = (body: string) => {
+    setReplyBody(body);
+    if (!socket || !currentUser) return;
+    if (body.trim()) {
+      socket.emit('ticket:typing', { ticketId: id, userId: currentUser.id, userName: currentUser.name });
+    } else {
+      socket.emit('ticket:stop_typing', { ticketId: id, userId: currentUser.id });
+    }
+  };
+
 
   const handleAssigneeChange = async (newAssigneeId: string) => {
     if (!id || !ticket) return;
@@ -153,12 +224,19 @@ export default function TicketDetailPage() {
     try {
       const res = await fetchWithAccess(`/tickets/${id}/reply`, {
         method: 'POST',
-        body: JSON.stringify({ body: replyBody }),
+        body: JSON.stringify({ 
+          body: replyBody,
+          type: isInternal ? 'internal_note' : 'public_reply'
+        }),
       });
       if (!res.ok) {
         toast.error('Failed to send reply');
       } else {
         setReplyBody('');
+        setIsInternal(false);
+        if (socket && currentUser) {
+          socket.emit('ticket:stop_typing', { ticketId: id, userId: currentUser.id });
+        }
         const next = await fetchWithAccess<TicketDetail>(`/tickets/${id}`);
         if (next.ok) {
           setTicket(next.data || null);
@@ -356,13 +434,41 @@ export default function TicketDetailPage() {
           </Card>
 
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
-                <MessageSquare className="h-5 w-5 text-blue-400" /> Discussion
-              </h2>
-              <span className="text-xs text-slate-500 bg-slate-900 px-2 py-1 rounded-full">
-                {ticket.replies.length} {ticket.replies.length === 1 ? 'reply' : 'replies'}
-              </span>
+            <div className="flex flex-col gap-4">
+              {viewingUsers.length > 0 && (
+                <div className="flex items-center gap-2 text-xs text-slate-400 bg-slate-900/40 p-2 rounded-lg border border-slate-800 animate-in fade-in slide-in-from-top-2">
+                  <Eye className="h-3 w-3 text-blue-400" />
+                  <span>
+                    {viewingUsers.length === 1 
+                      ? `${viewingUsers[0].userId === currentUser?.id ? 'You are' : (viewingUsers[0].userName || 'An agent') + ' is'} viewing this ticket`
+                      : `${viewingUsers.length} agents are viewing this ticket`}
+                  </span>
+                </div>
+              )}
+              
+              {typingUsers.length > 0 && (
+                <div className="flex items-center gap-2 text-xs text-amber-400/80 bg-amber-900/10 p-2 rounded-lg border border-amber-500/20 animate-in fade-in slide-in-from-top-2">
+                  <div className="flex gap-0.5">
+                    <span className="w-1 h-1 bg-amber-400 rounded-full animate-bounce" />
+                    <span className="w-1 h-1 bg-amber-400 rounded-full animate-bounce [animation-delay:0.2s]" />
+                    <span className="w-1 h-1 bg-amber-400 rounded-full animate-bounce [animation-delay:0.4s]" />
+                  </div>
+                  <span>
+                    {typingUsers.length === 1
+                      ? `${typingUsers[0].userId === currentUser?.id ? 'You are' : typingUsers[0].userName + ' is'} typing...`
+                      : `${typingUsers.length} people are typing...`}
+                  </span>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5 text-blue-400" /> Discussion
+                </h2>
+                <span className="text-xs text-slate-500 bg-slate-900 px-2 py-1 rounded-full">
+                  {ticket.replies.length} {ticket.replies.length === 1 ? 'reply' : 'replies'}
+                </span>
+              </div>
             </div>
 
             <div className="space-y-6 relative before:absolute before:inset-0 before:ml-4 before:-translate-x-px before:bg-slate-800 before:w-0.5 before:h-full">
@@ -377,7 +483,7 @@ export default function TicketDetailPage() {
               ) : (
                 ticket.replies.map((reply) => {
                   const isAi = reply.authorType === 'ai';
-                  const isInternal = reply.isInternalNote || reply.type === 'note';
+                  const isInternal = reply.type === 'internal_note';
 
                   return (
                     <div key={reply._id} className="relative pl-12 group">
@@ -472,23 +578,46 @@ export default function TicketDetailPage() {
                 <div className="absolute left-0 top-0 flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 ring-4 ring-slate-950">
                   <Send className="h-4 w-4 text-white" />
                 </div>
-                <Card className="border-slate-800 bg-slate-950 shadow-lg">
+                <Card className={`border-slate-800 shadow-lg transition-colors ${isInternal ? 'bg-amber-950/10 border-amber-500/20' : 'bg-slate-950'}`}>
                   <CardContent className="p-4 space-y-4">
+                    <div className="flex items-center gap-4 mb-2">
+                      <button
+                        onClick={() => setIsInternal(false)}
+                        className={`text-sm font-medium px-3 py-1 rounded-md transition-colors ${!isInternal ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+                      >
+                        Public Reply
+                      </button>
+                      <button
+                        onClick={() => setIsInternal(true)}
+                        className={`text-sm font-medium px-3 py-1 rounded-md transition-colors flex items-center gap-1.5 ${isInternal ? 'bg-amber-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+                      >
+                        <Lock className="h-3.5 w-3.5" /> Internal Note
+                      </button>
+                    </div>
+
                     <Textarea
-                      placeholder="Write a reply..."
+                      placeholder={isInternal ? "Add a private note for the team..." : "Write a reply to the customer..."}
                       value={replyBody}
-                      onChange={(e) => setReplyBody(e.target.value)}
-                      className="min-h-[120px] resize-y bg-slate-900/50 border-slate-800 focus:border-blue-500/50"
+                      onChange={(e) => handleTyping(e.target.value)}
+                      className={`min-h-[120px] resize-y bg-slate-900/50 border-slate-800 focus:border-blue-500/50 ${isInternal ? 'focus:border-amber-500/50' : ''}`}
                     />
                     <div className="flex justify-between items-center">
                       <p className="text-xs text-slate-500">
-                        <span className="hidden sm:inline">Pro tip: </span>
-                        Use AI Copilot to generate a draft.
+                        {isInternal ? (
+                          <span className="text-amber-500/70 flex items-center gap-1">
+                            <ShieldAlert className="h-3 w-3" /> Visible only to agents
+                          </span>
+                        ) : (
+                          <>
+                            <span className="hidden sm:inline">Pro tip: </span>
+                            Use AI Copilot to generate a draft.
+                          </>
+                        )}
                       </p>
                       <Button
                         onClick={handleManualReply}
                         disabled={!replyBody.trim() || sendingReply}
-                        className="px-6"
+                        className={`px-6 ${isInternal ? 'bg-amber-600 hover:bg-amber-500' : ''}`}
                       >
                         {sendingReply ? (
                           <>
@@ -497,7 +626,7 @@ export default function TicketDetailPage() {
                           </>
                         ) : (
                           <>
-                            <Send className="mr-2 h-4 w-4" /> Send Reply
+                            <Send className="mr-2 h-4 w-4" /> {isInternal ? 'Add Note' : 'Send Reply'}
                           </>
                         )}
                       </Button>
@@ -557,8 +686,46 @@ export default function TicketDetailPage() {
                   </Badge>
                 </div>
               </div>
+
+              {ticket.slaPolicy && (
+                <div className="pt-4 border-t border-slate-800 space-y-3">
+                  <label className="text-xs font-medium text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <ShieldAlert className="h-3 w-3 text-blue-400" /> SLA: {ticket.slaPolicy.name}
+                  </label>
+                  
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500">First Response:</span>
+                      {ticket.slaFirstResponseAt ? (
+                        <span className="text-emerald-400 font-medium">Met</span>
+                      ) : ticket.slaBreached ? (
+                        <span className="text-red-400 font-medium">Breached</span>
+                      ) : (
+                        <span className="text-blue-400 font-medium">Active</span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500">Resolution:</span>
+                      {ticket.slaResolvedAt ? (
+                        <span className="text-emerald-400 font-medium">Met</span>
+                      ) : ticket.slaBreached ? (
+                        <span className="text-red-400 font-medium">Breached</span>
+                      ) : (
+                        <span className="text-blue-400 font-medium">Active</span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {ticket.slaPausedAt && (
+                    <div className="bg-amber-500/10 border border-amber-500/20 rounded p-2 text-[10px] text-amber-400 flex items-center gap-1.5">
+                      <Clock className="h-3 w-3" /> SLA Paused (Waiting on Customer)
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
+
 
           <Card className="border-blue-500/20 bg-blue-950/10 sticky top-6 shadow-lg shadow-blue-900/5">
             <CardHeader className="pb-3 border-b border-blue-500/10 bg-blue-900/5">

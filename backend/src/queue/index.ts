@@ -1,6 +1,7 @@
 import { Queue } from 'bullmq';
 import { ResolvedTicketEmbeddingService } from '../services/ResolvedTicketEmbeddingService';
 import mongoose from 'mongoose';
+import logger from '../shared/utils/logger';
 
 export function buildConnection() {
   const url = process.env.REDIS_URL;
@@ -35,20 +36,19 @@ export function buildConnection() {
 export const shouldUseMock =
   !process.env.REDIS_URL && !process.env.REDIS_HOST && process.env.NODE_ENV !== 'production';
 
-console.log(`[Queue] Initializing... shouldUseMock=${shouldUseMock}`);
+logger.info(`[Queue] Initializing... shouldUseMock=${shouldUseMock}`);
 
 class MockQueue {
   async add(_name: string, _data: any) {
-    console.log(`[MockQueue] Adding job ${_name}`, _data);
+    logger.info(`[MockQueue] Adding job ${_name}`, _data);
     return { id: 'mock', name: _name };
   }
 }
 
 class MockResolvedQueue {
   async add(name: string, data: any) {
-    console.log(`[MockResolvedQueue] Processing job ${name} directly (no Redis)`, data);
+    logger.info(`[MockResolvedQueue] Processing job ${name} directly (no Redis)`, data);
     if (name === 'upsert') {
-      // Fire and forget (don't await to avoid blocking response)
       (async () => {
         try {
           const service = new ResolvedTicketEmbeddingService();
@@ -56,8 +56,8 @@ class MockResolvedQueue {
             new mongoose.Types.ObjectId(data.tenantId),
             new mongoose.Types.ObjectId(data.ticketId),
           );
-        } catch (e) {
-          console.error('[MockResolvedQueue] Failed to process job', e);
+        } catch (e: any) {
+          logger.error(`[MockResolvedQueue] Failed to process job: ${e.message}`);
         }
       })();
     }
@@ -65,24 +65,47 @@ class MockResolvedQueue {
   }
 }
 
-export const emailSendQueue: { add: (name: string, data: any) => Promise<any> } = shouldUseMock
-  ? new MockQueue()
-  : new Queue('email-send', { connection: buildConnection() });
+export const defaultJobOptions = {
+  attempts: 5,
+  backoff: {
+    type: 'exponential',
+    delay: 1000,
+  },
+  removeOnComplete: {
+    age: 3600, // keep for 1 hour
+    count: 1000,
+  },
+  removeOnFail: {
+    age: 24 * 3600 * 7, // keep for 7 days
+  },
+};
 
-export const resolvedSnippetQueue: {
-  add: (name: string, data: any) => Promise<any>;
-} = shouldUseMock
+const connection = buildConnection();
+
+export const emailSendQueue = shouldUseMock
+  ? new MockQueue()
+  : new Queue('email-send', { connection, defaultJobOptions });
+
+export const resolvedSnippetQueue = shouldUseMock
   ? new MockResolvedQueue()
-  : new Queue('resolved-snippet', { connection: buildConnection() });
+  : new Queue('resolved-snippet', { connection, defaultJobOptions });
 
-export const integrationSyncQueue: {
-  add: (name: string, data: any) => Promise<any>;
-} = shouldUseMock
+export const integrationSyncQueue = shouldUseMock
   ? new MockQueue()
-  : new Queue('integration-sync', { connection: buildConnection() });
+  : new Queue('integration-sync', { connection, defaultJobOptions });
 
-export const ticketOrchestrationQueue: {
-  add: (name: string, data: any) => Promise<any>;
-} = shouldUseMock
+export const ticketOrchestrationQueue = shouldUseMock
   ? new MockQueue()
-  : new Queue('ticket-orchestration', { connection: buildConnection() });
+  : new Queue('ticket-orchestration', { connection, defaultJobOptions });
+
+export const slaMonitorQueue = shouldUseMock
+  ? new MockQueue()
+  : new Queue('sla-monitor', { connection, defaultJobOptions });
+
+export const ticketLifecycleQueue = shouldUseMock
+  ? new MockQueue()
+  : new Queue('ticket-lifecycle', { connection, defaultJobOptions });
+
+export const dlqQueue = shouldUseMock
+  ? new MockQueue()
+  : new Queue('dlq', { connection });

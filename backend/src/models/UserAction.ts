@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IUserAction extends Document {
+  deletedAt?: Date | null;
   tenantId: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
   type: string;
@@ -12,6 +13,7 @@ export interface IUserAction extends Document {
 
 const UserActionSchema: Schema = new Schema(
   {
+    deletedAt: { type: Date, default: null },
     tenantId: { type: Schema.Types.ObjectId, ref: 'Tenant', required: true },
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     type: { type: String, required: true },

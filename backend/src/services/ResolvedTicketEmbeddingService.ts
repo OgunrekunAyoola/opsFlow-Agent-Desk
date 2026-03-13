@@ -5,10 +5,12 @@ import Ticket from '../models/Ticket';
 import TicketReply from '../models/TicketReply';
 import ResolvedTicketSnippet from '../models/ResolvedTicketSnippet';
 import AiCorrection from '../models/AiCorrection';
+import logger from '../shared/utils/logger';
 
 dotenv.config();
 
 import KBArticleProposal from '../models/KBArticleProposal';
+import { tenantScope } from '../shared/utils/tenantGuard';
 
 export class ResolvedTicketEmbeddingService {
   private client: GoogleGenerativeAI | null;
@@ -41,7 +43,7 @@ export class ResolvedTicketEmbeddingService {
       if (!Array.isArray(values)) return null;
       return values as number[];
     } catch (e) {
-      console.error('Embedding failed (falling back to mock):', e);
+      logger.error('Embedding failed (falling back to mock):', e);
       return Array.from({ length: 768 }, () => Math.random());
     }
   }
@@ -102,7 +104,7 @@ export class ResolvedTicketEmbeddingService {
       }
       return null;
     } catch (e) {
-      console.error('Failed to generate clean QA pair', e);
+      logger.error('Failed to generate clean QA pair', e);
       return null;
     }
   }
@@ -126,7 +128,7 @@ export class ResolvedTicketEmbeddingService {
   ): Promise<any[]> {
     // Note: For production, use a vector database (Pinecone, Weaviate, or Mongo Atlas Vector Search)
     // This is a simple in-memory implementation for demonstration/MVP scale.
-    const candidates = await ResolvedTicketSnippet.find({ tenantId })
+    const candidates = await ResolvedTicketSnippet.find({ ...tenantScope(tenantId.toString()) })
       .sort({ createdAt: -1 })
       .limit(100) // Look at last 100 resolved tickets
       .lean()
@@ -152,7 +154,7 @@ export class ResolvedTicketEmbeddingService {
 
     if (!this.client) {
       // Mock Proposal
-      const existing = await KBArticleProposal.findOne({ tenantId, status: 'pending' });
+      const existing = await KBArticleProposal.findOne({ ...tenantScope(tenantId.toString()), status: 'pending' });
       if (!existing) {
         await KBArticleProposal.create({
           tenantId,
@@ -201,7 +203,7 @@ export class ResolvedTicketEmbeddingService {
 
         // Check for duplicate proposals
         const existing = await KBArticleProposal.findOne({
-          tenantId,
+          ...tenantScope(tenantId.toString()),
           title: data.title,
           status: 'pending',
         });
@@ -219,9 +221,9 @@ export class ResolvedTicketEmbeddingService {
         }
       }
     } catch (e) {
-      console.error('Failed to generate KB proposal', e);
+      logger.error('Failed to generate KB proposal', e);
       // Fallback Mock Proposal
-      const existing = await KBArticleProposal.findOne({ tenantId, status: 'pending' });
+      const existing = await KBArticleProposal.findOne({ ...tenantScope(tenantId.toString()), status: 'pending' });
       if (!existing) {
         await KBArticleProposal.create({
           tenantId,
@@ -242,24 +244,24 @@ export class ResolvedTicketEmbeddingService {
   ): Promise<void> {
     // if (!this.embedModel) return;
 
-    const existing = await ResolvedTicketSnippet.findOne({ tenantId, ticketId }).exec();
+    const existing = await ResolvedTicketSnippet.findOne({ ...tenantScope(tenantId.toString()), ticketId }).exec();
     if (existing) return;
 
-    const ticket = await Ticket.findOne({ _id: ticketId, tenantId }).exec();
+    const ticket = await Ticket.findOne({ _id: ticketId, ...tenantScope(tenantId.toString()) }).exec();
     if (!ticket) return;
 
     if (!['closed', 'resolved'].includes(ticket.status)) {
       return;
     }
 
-    const correction = await AiCorrection.findOne({ tenantId, ticketId })
+    const correction = await AiCorrection.findOne({ ...tenantScope(tenantId.toString()), ticketId })
       .sort({ createdAt: -1 })
       .lean()
       .exec();
 
     const replies = await TicketReply.find({
       ticketId,
-      tenantId,
+      ...tenantScope(tenantId.toString()),
       authorType: 'human',
     })
       .sort({ createdAt: -1 })
@@ -291,7 +293,7 @@ export class ResolvedTicketEmbeddingService {
     if (!embedding || embedding.length === 0) return;
 
     await ResolvedTicketSnippet.findOneAndUpdate(
-      { tenantId, ticketId },
+      { ...tenantScope(tenantId.toString()), ticketId },
       {
         snippetText,
         embedding,
@@ -310,7 +312,7 @@ export class ResolvedTicketEmbeddingService {
         similar = await this.findSimilarSnippets(tenantId, embedding);
       } else {
         // Mock similar snippets for testing without LLM
-        similar = await ResolvedTicketSnippet.find({ tenantId })
+        similar = await ResolvedTicketSnippet.find({ ...tenantScope(tenantId.toString()) })
           .sort({ createdAt: -1 })
           .limit(3)
           .lean()
@@ -324,7 +326,7 @@ export class ResolvedTicketEmbeddingService {
         await this.generateKbProposal(cluster, tenantId);
       }
     } catch (e) {
-      console.error('Self-learning trigger failed', e);
+      logger.error('Self-learning trigger failed', e);
     }
   }
 }

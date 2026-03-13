@@ -14,9 +14,12 @@ import UserAction from '../../models/UserAction';
 import Notification from '../../models/Notification';
 import { emailSendQueue } from '../../queue';
 import mongoose from 'mongoose';
+import { AssignmentService } from '../../services/AssignmentService';
+import logger from '../../shared/utils/logger';
 
 export class TicketOrchestrator {
   private llmProvider: GeminiProvider;
+  private assignmentService: AssignmentService;
   private agents: {
     triage: TriageAgent;
     enrichment: EnrichmentAgent;
@@ -36,10 +39,11 @@ export class TicketOrchestrator {
       response: new ResponseAgent(this.llmProvider),
       quality: new QualityAgent(this.llmProvider),
     };
+    this.assignmentService = new AssignmentService();
   }
 
   async runPipeline(tenantId: string, ticketId: string, startedByUserId?: string) {
-    console.log(`[Orchestrator] Starting pipeline for ticket ${ticketId}`);
+    logger.info(`[Orchestrator] Starting pipeline for ticket ${ticketId}`);
 
     // 1. Initialize Context
     const ticket = await Ticket.findOne({ _id: ticketId, tenantId });
@@ -68,6 +72,14 @@ export class TicketOrchestrator {
       context = await this.agents.triage.run(context);
       await this.saveStep(run, 'triage', context.classification);
 
+      // Intelligent Assignment
+      if (context.classification?.category) {
+        await this.assignmentService.assignTicket(ticketId, context.classification.category);
+      } else {
+        await this.assignmentService.assignTicket(ticketId);
+      }
+
+
       // Enrichment
       context = await this.agents.enrichment.run(context);
       await this.saveStep(run, 'enrichment', context.enrichment);
@@ -95,9 +107,9 @@ export class TicketOrchestrator {
       run.finishedAt = new Date();
       await run.save();
 
-      console.log(`[Orchestrator] Pipeline completed for ticket ${ticketId}`);
+      logger.info(`[Orchestrator] Pipeline completed for ticket ${ticketId}`);
     } catch (error: any) {
-      console.error('[Orchestrator] Pipeline failed:', error);
+      logger.error('[Orchestrator] Pipeline failed:', error);
       run.status = 'failed';
       run.errorMessage = error.message;
       await run.save();
@@ -132,9 +144,6 @@ export class TicketOrchestrator {
         sentiment: classification.sentiment,
         category: classification.category,
       };
-      if (classification.assigneeId) {
-        update.assigneeId = classification.assigneeId;
-      }
       // Status update
       if (classification.category && context.ticket?.status === 'new') {
         update.status = 'triaged';
@@ -179,7 +188,7 @@ export class TicketOrchestrator {
           to: context.ticket?.customerEmail,
           subject: `Re: ${context.ticket?.subject}`,
           body: aiReply.body,
-        });
+        }, { jobId: aiReply._id.toString() });
 
         await Ticket.updateOne({ _id: ticketId, tenantId }, { $set: { status: 'auto_resolved' } });
 

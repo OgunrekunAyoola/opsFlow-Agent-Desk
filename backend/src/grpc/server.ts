@@ -196,7 +196,7 @@ const triageTicket = async (call: any, callback: any) => {
       tenantId,
       ticketId: id,
       startedByUserId: userId,
-    });
+    }, { jobId: id });
 
     // Update ticket status to indicate processing
     ticket.status = 'triaging';

@@ -8,7 +8,7 @@ export class TriageAgent extends BaseAgent {
 
     // Fetch team for routing
     const users = await User.find({ tenantId: context.tenantId });
-    const teamContext = users.map((u) => `- ${u.name} (ID: ${u._id}, Role: ${u.role})`).join('\n');
+    const teamContext = users.map((u: import('../models/User').IUser) => `- ${u.name} (ID: ${u._id}, Role: ${u.role})`).join('\n');
 
     const prompt = `
       Analyze this support ticket and extract:
@@ -43,7 +43,7 @@ export class TriageAgent extends BaseAgent {
         confidence: 0.9,
         reasoning: result.reasoning || '',
       };
-    } catch (error) {
+    } catch (error: unknown) {
       // Fallback
       context.classification = {
         category: 'general',
